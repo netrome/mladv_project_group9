@@ -1,0 +1,38 @@
+\documentclass[10pt,a4paper]{article}
+%\usepackage[ruled,norelsize]{algorithm2e}
+\usepackage[latin1]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{mathtools}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\title{Sparse Gaussian}
+\begin{document}
+\maketitle
+\section{mathematical notations}
+We first give brief description of mathematical notations will be used through out the project. 
+
+The original data set will be denoted as $\mathcal{D}$ which consists of $N$ $d$-dimensional vectors $\mathbf{X}=\lbrace\mathbf{x}^{(i)}=(x_1,\dots,x_d)\,|\, i=1,\dots,N\rbrace$. Let the new input data be $\mathbf{x}^{*}=(x^*_1,\dots,x^*_d)$. The pseudo input data set is denoted as $\bar{\mathcal{D}}$ consists of $\bar{\mathbf{X}}=\lbrace\mathbf{\bar{x}}^{(i)}=(x_1,\dots,x_d)\,|\,i=1,\dots,M\rbrace$. $\mathbf{X}$ is paired with target $\mathbf{Y}=(y^{(1)},\dots,y^{(N)})$, notice that $y^{(i)}$ are scalars. $\mathbf{x}^*$ is paired with new target $y^*$. The underlining latent function is denoted as $\mathbf{f}(\mathbf{x})=\mathbf{y}$ and the pseudo one is $\bar{\mathbf{f}}$. A Gaussian distribution is denoted as $\mathcal{N}(\mathbf{f}|\mathbf{m},\mathbf{V})$ with mean $\mathbf{m}$ and variance $\mathbf{V}$.
+\section{sparse Gaussian process}
+We first give a zero mean Gaussian prior over the underlining latent function: $p(\mathbf{f}|\mathbf{X})=\mathcal{N}(\mathbf{f}|\mathbf{0},\mathbf{K}_N)$ where $\mathbf{K}_N$ is our kernel matrix with elements given by, $[\mathbf{K}_N]_{nn'}=K(\mathbf{x},\mathbf{x}')$:
+\begin{align}
+K(\mathbf{x},\mathbf{x}')=c\exp [-\frac{1}{2}\sum_{i=1}^{D}b_i(x^{(n)}_i-x^{(n')}_i)^2], \quad\theta\equiv \lbrace c,\mathbf{b}\rbrace.
+\end{align}
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
