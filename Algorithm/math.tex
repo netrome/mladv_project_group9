@@ -15,7 +15,7 @@ We first give brief description of mathematical notations will be used through o
 
 The original data set will be denoted as $\mathcal{D}$ which consists of $N$ $d$-dimensional vectors $\pmb{X}=\lbrace\pmb{x}^{(i)}=(x_1,\dots,x_d)\,|\, i=1,\dots,N\rbrace$. Let the new input data be $\pmb{x}^{*}=(x^*_1,\dots,x^*_d)$. The pseudo input data set is denoted as $\bar{\mathcal{D}}$ consists of $\bar{\pmb{X}}=\lbrace\pmb{\bar{x}}^{(i)}=(x_1,\dots,x_d)\,|\,i=1,\dots,M\rbrace$. $\pmb{X}$ is paired with target $\pmb{Y}=(y^{(1)},\dots,y^{(N)})$, notice that $y^{(i)}$ are scalars. $\pmb{x}^*$ is paired with new target $y^*$. The underlining latent function is denoted as $\pmb{f}(\pmb{x})=\pmb{y}$ and the pseudo one is $\bar{\pmb{f}}$. A Gaussian distribution is denoted as $\mathcal{N}(\pmb{f}|\pmb{m},\pmb{V})$ with mean $\pmb{m}$ and variance $\pmb{V}$.
 \section{sparse Gaussian process}
-We first give a zero mean Gaussian prior over the underlining latent function: $p(\pmb{f}|\pmb{X})=\mathcal{N}(\pmb{f}|\pmb{0},\pmb{K}_N)$ where $\pmb{K}_N$ is our kernel matrix with elements given by, $[\pmb{K}_N]_{nn'}=K(\pmb{x},\pmb{x}')$:
+We first give a zero mean Gaussian prior over the underlining latent function: $p(\pmb{f}|\pmb{X})=\mathcal{N}(\pmb{f}|\pmb{0},\pmb{K}_N)$ where $\pmb{K}_N$ is our kernel matrix with elements given by, $[\pmb{K}_N]_{ij}\equiv K_{\pmb{x}^{(i)}\pmb{x}^{(j)}}=K(\pmb{x}^{(i)},\pmb{x}^{(j)})$:
 \begin{align}
 K(\pmb{x},\pmb{x}')=c\exp [-\frac{1}{2}\sum_{i=1}^{D}b_i(x^{(n)}_i-x^{(n')}_i)^2], \quad\pmb{\theta}\equiv \lbrace c,\pmb{b}\rbrace,
 \end{align}
@@ -40,6 +40,18 @@ Now we can condition on $\pmb{y}$ and get
 &=\mathcal{N}(y^*|\pmb{K}_{\pmb{x}^*}^T(\pmb{K}_N+\sigma^2\pmb{I})^{-1}\pmb{y},K_{\pmb{x}^*\pmb{x}^*}+\sigma^2-\pmb{K}_{\pmb{x}^*}^T(\pmb{K}_N+\sigma^2\pmb{I})^{-1}\pmb{K}_{\pmb{x}^*}).
 \end{align}
 For detailed proof, check Theorem 4.3.1 in Murphy's machine learning a probabilistic perspective.
+
+Now we consider pseudo input $\bar{\pmb{X}}$. Everything still holds except that there are no noises in it. The new input and target pair $(\pmb{x}^*,y^*$ is replaced by one of the actually data set and targets pairs $(\pmb{x}^{(i)},y_i)$. We therefore just use $\bar{\pmb{f}}$ represents the pseudo outputs and $\bar{\pmb{\theta}}$, and the single point likelihood is given by
+\begin{align}
+p(y|\pmb{x},\bar{\pmb{f}},\bar{\mathcal{D}})=\mathcal{N}(y|\pmb{K}_{\pmb{x}}^T\pmb{K}_M^{-1}\bar{\pmb{f}},K_{\pmb{x}\pmb{x}}+\sigma^2-\pmb{K}_{\pmb{x}}^T\pmb{K}_M^{-1}\pmb{K}_{\pmb{x}}),
+\end{align}
+where $\pmb{K}_{\pmb{x}}=(K(\pmb{x},\bar{\pmb{x}}^{(1)}),\dots,K(\pmb{x},\bar{\pmb{x}}^{(M)}))$, i.e. $[\pmb{K}_{\pmb{x}}]_{i}=K(\pmb{x},\bar{\pmb{x}}^{(i)})$.
+As the target data are i.i.d given the inputs, the complete data likelihood is given by
+\begin{align}
+p(\pmb{y}|\pmb{X},\bar{\pmb{f}},\bar{\mathcal{D}})=\prod^N_{i=1}p(y_i|\pmb{x}^{(i)},\bar{\pmb{f}},\bar{\mathcal{D}})=\mathcal{N}(\pmb{y}|\pmb{K}_{NM}\pmb{K}_M^{-1}\bar{\pmb{f}}, \pmb{\Lambda}+\sigma^2\pmb{I}),
+\end{align}
+where $\pmb{\Lambda}=\text{diag}(\pmb{\lambda}),\lambda_i = K_{\pmb{x}^{(i)}\pmb{x}^{(i)}}-\pmb{K}_{\pmb{x}^{(i)}}^T\pmb{K}_M^{-1}\pmb{K}_{\pmb{x}^{(i)}}$, is a $N\times N$ diagonal matrix, and $[\pmb{K}_{NM}]_{ij}=K(\pmb{x}^{(i)},\pmb{x}^{(j)})$
+Together with a Gaussian prior, $p(\bar{\pmb{f}}|\bar{\pmb{X}})=\mathcal{N}(\bar{\pmb{f}}|\pmb{0},\pmb{K}_M)$
 \end{document}
 
 
