@@ -13,12 +13,33 @@
 \section{mathematical notations}
 We first give brief description of mathematical notations will be used through out the project. 
 
-The original data set will be denoted as $\mathcal{D}$ which consists of $N$ $d$-dimensional vectors $\mathbf{X}=\lbrace\mathbf{x}^{(i)}=(x_1,\dots,x_d)\,|\, i=1,\dots,N\rbrace$. Let the new input data be $\mathbf{x}^{*}=(x^*_1,\dots,x^*_d)$. The pseudo input data set is denoted as $\bar{\mathcal{D}}$ consists of $\bar{\mathbf{X}}=\lbrace\mathbf{\bar{x}}^{(i)}=(x_1,\dots,x_d)\,|\,i=1,\dots,M\rbrace$. $\mathbf{X}$ is paired with target $\mathbf{Y}=(y^{(1)},\dots,y^{(N)})$, notice that $y^{(i)}$ are scalars. $\mathbf{x}^*$ is paired with new target $y^*$. The underlining latent function is denoted as $\mathbf{f}(\mathbf{x})=\mathbf{y}$ and the pseudo one is $\bar{\mathbf{f}}$. A Gaussian distribution is denoted as $\mathcal{N}(\mathbf{f}|\mathbf{m},\mathbf{V})$ with mean $\mathbf{m}$ and variance $\mathbf{V}$.
+The original data set will be denoted as $\mathcal{D}$ which consists of $N$ $d$-dimensional vectors $\pmb{X}=\lbrace\pmb{x}^{(i)}=(x_1,\dots,x_d)\,|\, i=1,\dots,N\rbrace$. Let the new input data be $\pmb{x}^{*}=(x^*_1,\dots,x^*_d)$. The pseudo input data set is denoted as $\bar{\mathcal{D}}$ consists of $\bar{\pmb{X}}=\lbrace\pmb{\bar{x}}^{(i)}=(x_1,\dots,x_d)\,|\,i=1,\dots,M\rbrace$. $\pmb{X}$ is paired with target $\pmb{Y}=(y^{(1)},\dots,y^{(N)})$, notice that $y^{(i)}$ are scalars. $\pmb{x}^*$ is paired with new target $y^*$. The underlining latent function is denoted as $\pmb{f}(\pmb{x})=\pmb{y}$ and the pseudo one is $\bar{\pmb{f}}$. A Gaussian distribution is denoted as $\mathcal{N}(\pmb{f}|\pmb{m},\pmb{V})$ with mean $\pmb{m}$ and variance $\pmb{V}$.
 \section{sparse Gaussian process}
-We first give a zero mean Gaussian prior over the underlining latent function: $p(\mathbf{f}|\mathbf{X})=\mathcal{N}(\mathbf{f}|\mathbf{0},\mathbf{K}_N)$ where $\mathbf{K}_N$ is our kernel matrix with elements given by, $[\mathbf{K}_N]_{nn'}=K(\mathbf{x},\mathbf{x}')$:
+We first give a zero mean Gaussian prior over the underlining latent function: $p(\pmb{f}|\pmb{X})=\mathcal{N}(\pmb{f}|\pmb{0},\pmb{K}_N)$ where $\pmb{K}_N$ is our kernel matrix with elements given by, $[\pmb{K}_N]_{nn'}=K(\pmb{x},\pmb{x}')$:
 \begin{align}
-K(\mathbf{x},\mathbf{x}')=c\exp [-\frac{1}{2}\sum_{i=1}^{D}b_i(x^{(n)}_i-x^{(n')}_i)^2], \quad\theta\equiv \lbrace c,\mathbf{b}\rbrace.
+K(\pmb{x},\pmb{x}')=c\exp [-\frac{1}{2}\sum_{i=1}^{D}b_i(x^{(n)}_i-x^{(n')}_i)^2], \quad\pmb{\theta}\equiv \lbrace c,\pmb{b}\rbrace,
 \end{align}
+where $\pmb{\theta}$ is the hyperparameters.
+We provide noises to $\pmb{f}$ such that $p(\pmb{y}|\pmb{f})=\mathcal{N}(\pmb{y}|\pmb{f},\sigma^2\pmb{I})$. By integrating out the latent function we have the marginal likelihood
+\begin{align}
+p(\pmb{y}|\pmb{X},\pmb{\theta})=\mathcal{N}(\pmb{y}|\pmb{0},\pmb{K}_N+\sigma^2I)
+\end{align}
+For prediction, the new input $\pmb{x}^*$ conditioning on the observed data and hyperparameters. Let write the joint probability first
+\begin{align}
+p(y^*,\pmb{y}|\pmb{x}^*,\mathcal{D},\pmb{\theta})=\mathcal{N}\left(\begin{pmatrix}
+0\\0
+\end{pmatrix},\begin{pmatrix}
+\pmb{K}_N+\sigma^2\pmb{I} & \pmb{K}_{\pmb{x}^*}\\
+\pmb{K}_{\pmb{x}^*}^T & K_{\pmb{x}^*\pmb{x}^*}+\sigma^2
+\end{pmatrix}\right),
+\end{align}
+where $\pmb{K}_{\pmb{x}^*}=(K(\pmb{x}^*,\pmb{x}^{(1)}),\dots,K(\pmb{x}^*,\pmb{x}^{(N)}))$, i.e. $[\pmb{K}_{\pmb{x}^*}]_{i}=K(\pmb{x}^*,\pmb{x}^{(i)})$, and $K_{\pmb{x}^*\pmb{x}^*}=K(\pmb{x}^*,\pmb{x}^*)$. 
+Now we can condition on $\pmb{y}$ and get
+\begin{align}
+&p(y^*|\pmb{y},\pmb{x}^*,\mathcal{D},\pmb{\theta})\nonumber\\
+&=\mathcal{N}(y^*|\pmb{K}_{\pmb{x}^*}^T(\pmb{K}_N+\sigma^2\pmb{I})^{-1}\pmb{y},K_{\pmb{x}^*\pmb{x}^*}+\sigma^2-\pmb{K}_{\pmb{x}^*}^T(\pmb{K}_N+\sigma^2\pmb{I})^{-1}\pmb{K}_{\pmb{x}^*}).
+\end{align}
+For detailed proof, check Theorem 4.3.1 in Murphy's machine learning a probabilistic perspective.
 \end{document}
 
 
