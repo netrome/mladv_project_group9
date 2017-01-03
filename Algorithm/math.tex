@@ -38,14 +38,14 @@ where $\pmb{K}_{\pmb{x}^*N}=(K(\pmb{x}^*,\pmb{x}^{(1)}),\dots,K(\pmb{x}^*,\pmb{x
 Now we can condition on $\pmb{y}$ and get
 \begin{align}
 &p(y^*|\pmb{y},\pmb{x}^*,\mathcal{D},\pmb{\theta})\nonumber\\
-&=\mathcal{N}(y^*|\pmb{K}_{\pmb{x}^*N}^T(\pmb{K}_N+\sigma^2\pmb{I})^{-1}\pmb{y},K_{\pmb{x}^*\pmb{x}^*}+\sigma^2-\pmb{K}_{\pmb{x}^*N}^T(\pmb{K}_N+\sigma^2\pmb{I})^{-1}\pmb{K}_{\pmb{x}^*N}).
+&=\mathcal{N}(y^*|\pmb{K}_{\pmb{x}^*N}(\pmb{K}_N+\sigma^2\pmb{I})^{-1}\pmb{y},K_{\pmb{x}^*\pmb{x}^*}+\sigma^2-\pmb{K}_{\pmb{x}^*N}(\pmb{K}_N+\sigma^2\pmb{I})^{-1}\pmb{K}_{\pmb{x}^*N}^T).
 \label{cgcondition}
 \end{align}
 For detailed proof, check Theorem 4.3.1 in Murphy's machine learning a probabilistic perspective.
 
 Now we consider pseudo input $\bar{\pmb{X}}$. Everything still holds except that there are no noises in it. The new input and target pair $(\pmb{x}^*,y^*)$ is replaced by one of the actually data set and targets pairs $(\pmb{x}^{(i)},y_i)$. We therefore just use $\bar{\pmb{f}}$ represents the pseudo outputs and $\bar{\pmb{\theta}}$, and the single point likelihood is given by
 \begin{align}
-p(y|\pmb{x},\bar{\pmb{f}},\bar{\pmb{X}})=\mathcal{N}(y|\pmb{K}_{\pmb{x}M}^T\pmb{K}_M^{-1}\bar{\pmb{f}},K_{\pmb{x}\pmb{x}}+\sigma^2-\pmb{K}_{\pmb{x}M}^T\pmb{K}_M^{-1}\pmb{K}_{\pmb{x}M}),
+p(y|\pmb{x},\bar{\pmb{f}},\bar{\pmb{X}})=\mathcal{N}(y|\pmb{K}_{\pmb{x}M}\pmb{K}_M^{-1}\bar{\pmb{f}},K_{\pmb{x}\pmb{x}}+\sigma^2-\pmb{K}_{\pmb{x}M}\pmb{K}_M^{-1}\pmb{K}_{\pmb{x}M}^T),
 \end{align}
 where $\pmb{K}_{\pmb{x}M}=(K(\pmb{x},\bar{\pmb{x}}^{(1)}),\dots,K(\pmb{x},\bar{\pmb{x}}^{(M)}))$, i.e. $[\pmb{K}_{\pmb{x}M}]_{i}=K(\pmb{x},\bar{\pmb{x}}^{(i)})$.
 As the target data are i.i.d given the inputs, the complete data likelihood is given by
@@ -53,11 +53,12 @@ As the target data are i.i.d given the inputs, the complete data likelihood is g
 p(\pmb{y}|\pmb{X},\bar{\pmb{f}},\bar{\pmb{X}})=\prod^N_{i=1}p(y_i|\pmb{x}^{(i)},\bar{\pmb{f}},\bar{\pmb{X}})=\mathcal{N}(\pmb{y}|\pmb{K}_{NM}\pmb{K}_M^{-1}\bar{\pmb{f}}, \pmb{\Lambda}+\sigma^2\pmb{I}),
 \label{cdlikelihood}
 \end{align}
-where $\pmb{\Lambda}=\text{diag}(\pmb{\lambda}),\lambda_i = K_{\pmb{x}^{(i)}\pmb{x}^{(i)}}-\pmb{K}_{\pmb{x}^{(i)}M}^T\pmb{K}_M^{-1}\pmb{K}_{\pmb{x}^{(i)}M}$, is a $N\times N$ diagonal matrix, and $[\pmb{K}_{NM}]_{ij}=K(\pmb{x}^{(i)},\pmb{x}^{(j)})$.
+where $\pmb{\Lambda}=\text{diag}(\pmb{\lambda}),\lambda_i = K_{\pmb{x}^{(i)}\pmb{x}^{(i)}}-\pmb{K}_{\pmb{x}^{(i)}M}\pmb{K}_M^{-1}\pmb{K}_{\pmb{x}^{(i)}M}^T$, is a $N\times N$ diagonal matrix, and $[\pmb{K}_{NM}]_{ij}=K(\pmb{x}^{(i)},\pmb{x}^{(j)})$.
 Together with a Gaussian prior, $p(\bar{\pmb{f}}|\bar{\pmb{X}})=\mathcal{N}(\bar{\pmb{f}}|\pmb{0},\pmb{K}_M)$, integrate over Eq.\ref{cdlikelihood} we have the SPGP marginal likelihood over pseudo inputs
 \begin{align}
 p(\pmb{y}|\pmb{X},\bar{\pmb{X}})&=\int p(\pmb{y}|\pmb{X},\bar{\pmb{f}},\bar{\pmb{X}})p(\bar{\pmb{f}}|\bar{\pmb{X}})\,\mathrm{d}\bar{\pmb{f}}\nonumber\\
 &=\mathcal{N}(\pmb{y}|\pmb{0},\pmb{K}_{NM}\pmb{K}_M^{-1}\pmb{K}_{MN}+\pmb{\Lambda}+\sigma^2\pmb{I}).
+\label{spgpmarginallikelihood}
 \end{align}
 Same as we have done from Eq.\ref{cgjoint} to Eq.\ref{cgcondition}, we first write the joint probability of $y^*,\pmb{y}$
 \begin{align}
@@ -65,8 +66,8 @@ Same as we have done from Eq.\ref{cgjoint} to Eq.\ref{cgcondition}, we first wri
 &=\mathcal{N}\left(\begin{pmatrix}
 0\\0
 \end{pmatrix},\begin{pmatrix}
- K_{\pmb{x}^*\pmb{x}^*}+\sigma^2 & \pmb{K}_{\pmb{x}^*M}\pmb{K}_M^{-1}\pmb{K}_{\pmb{x}^*N}\\
-(\pmb{K}_{\pmb{x}^*M}\pmb{K}_M^{-1}\pmb{K}_{\pmb{x}^*N})^T & \pmb{K}_{NM}\pmb{K}_M^{-1}\pmb{K}_{MN}+\pmb{\Lambda}+\sigma^2\pmb{I}
+ K_{\pmb{x}^*\pmb{x}^*}+\sigma^2 & \pmb{K}_{\pmb{x}^*M}\pmb{K}_M^{-1}\pmb{K}_{MN}\\
+(\pmb{K}_{\pmb{x}^*M}\pmb{K}_M^{-1}\pmb{K}_{MN})^T & \pmb{K}_{NM}\pmb{K}_M^{-1}\pmb{K}_{MN}+\pmb{\Lambda}+\sigma^2\pmb{I}
 \end{pmatrix}\right),
 \end{align}
 where $\pmb{K}_{\pmb{x}^*M}=(K(\pmb{x}^*,\bar{\pmb{x}}^{(1)}),\dots,K(\pmb{x}^*,\bar{\pmb{x}}^{(M)}))$, i.e. $[\pmb{K}_{\pmb{x}^*M}]_{i}=K(\pmb{x}^*,\bar{\pmb{x}}^{(i)})$. From now on we let 
@@ -82,59 +83,49 @@ p(y^*|\pmb{y},\pmb{x}^*,\pmb{X},\bar{\pmb{X}})=\mathcal{N}(\mu^*,{\sigma^*}^2)
 \begin{equation}
 \begin{aligned}
 \mu^*&=\pmb{Q}_{\pmb{x}^*N}(\pmb{Q}_N+\pmb{\Lambda}+\sigma^2\pmb{I})^{-1}\pmb{y}\\
-{\sigma^*}^2&=K_{\pmb{x}^*\pmb{x}^*}-\pmb{Q}_{\pmb{x}^*N}(\pmb{Q}_N+\pmb{\Lambda}+\sigma^2\pmb{I})^{-1}\pmb{Q}_{N\pmb{x}^*}+\sigma^2
+{\sigma^*}^2&=K_{\pmb{x}^*\pmb{x}^*}-\pmb{Q}_{\pmb{x}^*N}(\pmb{Q}_N+\pmb{\Lambda}+\sigma^2\pmb{I})^{-1}\pmb{Q}_{N\pmb{x}^*}+\sigma^2.
 \end{aligned}
+\label{spgppredict}
 \end{equation}
+The pseudo input $\bar{\pmb{C}}$ and hyperparameters $\pmb{\Theta}=\lbrace\pmb{\theta},\sigma^2\rbrace$, this can be done by maximizing Eq.\ref{spgpmarginallikelihood}.
+
+Some simplification for matrix inversion. First from matrix inversion lemma
+\begin{align}
+(\pmb{A}+\pmb{U}\pmb{B}\pmb{U}^T)^{-1}=\pmb{A}^{-1}-\pmb{A}^{-1}\pmb{U}(\pmb{B}^{-1}+\pmb{U}^T\pmb{A}^{-1}\pmb{U})^{-1}\pmb{U}^T\pmb{A}^{-1}\\
+\det(\pmb{A}+\pmb{U}\pmb{B}\pmb{U}^T)=\det(\pmb{A})\det(\pmb{B})\det(\pmb{B}^{-1}+\pmb{U}^T\pmb{A}^{-1}\pmb{U}),
+\end{align}
+we can rewrite following
+\begin{align}
+&(\pmb{K}_{NM}\pmb{K}_{M}^{-1}\pmb{K}_{MN}+\pmb{\Lambda}+\sigma^2\pmb{I})^{-1}\\
+&=(\pmb{\Lambda}+\sigma^2\pmb{I})^{-1}-(\pmb{\Lambda}+\sigma^2\pmb{I})^{-1}\pmb{K}_{NM}\pmb{B}^{-1}\pmb{K}_{MN}(\pmb{\Lambda}+\sigma^2\pmb{I})^{-1},
+\end{align}
+where $\pmb{B}=\pmb{K}_M+\pmb{K}_{MN}(\pmb{\Lambda}+\sigma^2\pmb{I})^{-1}\pmb{K}_{NM}$. Now matrix inversion only happens to $(\pmb{\Lambda}+\sigma^2\pmb{I})^{-1}$ which is $\mathcal{O}(N)$ as it is diagonal. Now Eq.\ref{spgppredict} become
+\begin{equation}
+\begin{aligned}
+\mu^*&=\pmb{K}_{\pmb{x}^*M}\pmb{B}^{-1}\pmb{K}_{MN}(\pmb{\Lambda}+\sigma^2\pmb{I})^{-1}\pmb{y}\\
+{\sigma^*}^2&=K_{\pmb{x}^*\pmb{x}^*}-\pmb{K}_{\pmb{x}^*M}(\pmb{K}_M^{-1}-\pmb{B}^{-1})\pmb{K}_{M\pmb{x}^*}+\sigma^2.
+\end{aligned}
+\label{spgppredictsim}
+\end{equation}
+\section{implementation}
+Rewrite
+\begin{align}
+\sigma^2\Gamma=\Lambda+
+\end{align}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 \end{document}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
