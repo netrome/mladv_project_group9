@@ -11,7 +11,7 @@
 \begin{document}
 \maketitle
 \section{mathematical notations}
-We first give brief description of mathematical notations will be used through out the project. 
+We first give brief description of mathematical notations will be used through out the project.
 
 The original data set will be denoted as $\mathcal{D}$ which consists of $N$ $d$-dimensional vectors $\pmb{X}=\lbrace\pmb{x}^{(i)}=(x_1,\dots,x_d)\,|\, i=1,\dots,N\rbrace$. Let the new input data be $\pmb{x}^{*}=(x^*_1,\dots,x^*_d)$. The pseudo input data set is denoted as $\bar{\mathcal{D}}$ consists of $\bar{\pmb{X}}=\lbrace\pmb{\bar{x}}^{(i)}=(x_1,\dots,x_d)\,|\,i=1,\dots,M\rbrace$. $\pmb{X}$ is paired with target $\pmb{Y}=(y^{(1)},\dots,y^{(N)})$, notice that $y^{(i)}$ are scalars. $\pmb{x}^*$ is paired with new target $y^*$. The underlining latent function is denoted as $\pmb{f}(\pmb{x})=\pmb{y}$ and the pseudo one is $\bar{\pmb{f}}$. A Gaussian distribution is denoted as $\mathcal{N}(\pmb{f}|\pmb{m},\pmb{V})$ with mean $\pmb{m}$ and variance $\pmb{V}$.
 \section{sparse Gaussian process}
@@ -38,7 +38,7 @@ where $\pmb{K}_{\pmb{x}^*N}=(K(\pmb{x}^*,\pmb{x}^{(1)}),\dots,K(\pmb{x}^*,\pmb{x
 Now we can condition on $\pmb{y}$ and get
 \begin{align}
 &p(y^*|\pmb{y},\pmb{x}^*,\mathcal{D},\pmb{\theta})\nonumber\\
-&=\mathcal{N}(y^*|\pmb{K}_{\pmb{x}^*N}(\pmb{K}_N+\sigma^2\pmb{I})^{-1}\pmb{y},K_{\pmb{x}^*\pmb{x}^*}+\sigma^2-\pmb{K}_{\pmb{x}^*N}(\pmb{K}_N+\sigma^2\pmb{I})^{-1}\pmb{K}_{\pmb{x}^*N}^T).
+&=\mathcal{N}(y^*|\pmb{K}_{\pmb{x}^*N}(\pmb{K}_N+\sigma^2\pmb{I})^{-1}\pmb{y}^T,K_{\pmb{x}^*\pmb{x}^*}+\sigma^2-\pmb{K}_{\pmb{x}^*N}(\pmb{K}_N+\sigma^2\pmb{I})^{-1}\pmb{K}_{\pmb{x}^*N}^T).
 \label{cgcondition}
 \end{align}
 For detailed proof, check Theorem 4.3.1 in Murphy's machine learning a probabilistic perspective.
@@ -110,8 +110,49 @@ where $\pmb{B}=\pmb{K}_M+\pmb{K}_{MN}(\pmb{\Lambda}+\sigma^2\pmb{I})^{-1}\pmb{K}
 \section{implementation}
 Rewrite
 \begin{align}
-\sigma^2\Gamma=\Lambda+
+\sigma^2\pmb{\Gamma}=\pmb{\Lambda}+\sigma^2\pmb{I},
 \end{align}
+and suppressing data dependency of Eq.\ref{spgpmarginallikelihood}, we have
+\begin{align}
+p(\pmb{y})=\mathcal{N}(\pmb{y}|\pmb{0},\pmb{Q}_N+\sigma^2\pmb{\Gamma}).
+\end{align}
+We maximize $\mathcal{L}=-\log p(\pmb{y})$
+\begin{align}
+\mathcal{L}=\frac{1}{2}(\log(\det(\pmb{Q}_N+\sigma^2\pmb{\Gamma}))+\pmb{y}(\pmb{Q}_N+\sigma^2\pmb{\Gamma})^{-1}\pmb{y}^T +N\log(2\pi)).
+\end{align}
+Let
+\begin{align}
+\mathcal{L}_1&=\log(\det(\pmb{Q}_N+\sigma^2\pmb{\Gamma}))\\
+\mathcal{L}_2&=\pmb{y}(\pmb{Q}_N+\sigma^2\pmb{\Gamma})^{-1}\pmb{y}^T.
+\end{align}
+Use matrix inversion lemma again, we have
+\begin{align}
+\mathcal{L}_1&=\log(\det(\pmb{K}_M+\sigma^{-2}\pmb{K}_{MN}\pmb{\Gamma}^{-1}\pmb{K}_{NM})\det(\pmb{K}_M^{-1})\det(\sigma^2\pmb{\Gamma}))\nonumber\\
+&=\log(\det(\pmb{A}))-\log(\det(\pmb{K}_M))+\log(\det(\pmb{\Gamma}))+(N-M)\log(\sigma^2)\\
+\mathcal{L}_2&=\sigma^{-2}\pmb{y}(\pmb{\Gamma}^{-1}-\pmb{\Gamma}^{-1}\pmb{K}_{NM}\pmb{A}^{-1}\pmb{K}_{MN}\pmb{\Gamma}^{-1})\pmb{y}^T\\
+&=\sigma^{-2}(||\pmb{\Gamma}^{-\frac{1}{2}}\pmb{y}^T||^2-||\pmb{A}^{-\frac{1}{2}}(\pmb{\Gamma}^{-\frac{1}{2}}\pmb{K}_{NM})^T\pmb{\Gamma}^{-\frac{1}{2}}\pmb{y}^T||^2)
+\end{align}
+where $\pmb{A}=\sigma^2\pmb{K}_M+\pmb{K}_{MN}\pmb{\Gamma}^{-1}\pmb{K}_{NM}$. The final negative log marginal likelihood is 
+\begin{align}
+\mathcal{L}=\frac{1}{2}(\mathcal{L}_1+\mathcal{L}_2+N\log(2\pi)).
+\end{align}
+\subsection{matrix derivatives}
+Let $\pmb{A}$ be a matrix with underlining parameter $\theta$. The derivative of the inverse matrix w.r.t $\theta$ is
+\begin{align}
+\frac{\partial}{\partial\theta}\pmb{A}^{-1}=-\pmb{A}^{-1}\frac{\partial\pmb{A}}{\partial\theta}\pmb{A}^{-1},
+\end{align}
+where the partial derivative takes elementwise. If $\pmb{A}$ is positive definite symmetric, the derivative of the log determinant is
+\begin{align}
+\frac{\partial}{\partial\theta}\log(\det(\pmb{A}))=\mathrm{tr}(\pmb{A}^{-1}\frac{\partial\pmb{A}}{\partial\theta})
+\end{align}
+
+First ignoring the noise variance $\sigma^2$, do partial derivative on $\pmb{\theta}$, we have
+\begin{align}
+\dot{\mathcal{L}}_1=\mathrm{tr}(\pmb{A}^{-\frac{1}{2}}\dot{\pmb{A}}\pmb{A}^{-\frac{T}{2}})-\mathrm{tr}(\pmb{K}_M^{-\frac{1}{2}}\dot{\pmb{K}}_M\pmb{K}_M^{-\frac{T}{2}})+\mathrm{tr}(\pmb{\Gamma}^{-\frac{1}{2}}\dot{\pmb{\Gamma}}\pmb{\Gamma}^{-\frac{1}{2}})
+\end{align}
+
+
+
 
 
 
