@@ -77,6 +77,9 @@ class SPGP_blubb:
 
 
     def do_precomputations(self):
+        """
+        Do any calculation that can be performed without new data and save relevant results
+        """
         K_M = self.kernel(self.pseudo_inputs, self.pseudo_inputs) + 1e-6*np.eye(self.n) # Added jitter
         #L = np.linalg.cholesky(K_M) Maybe not necessary
         K_MN = self.kernel(self.pseudo_inputs, self.X_tr)
@@ -94,8 +97,16 @@ class SPGP_blubb:
         self.alpha = self.B_inv.dot( K_MN.dot( LS_inv.dot( self.Y_tr ) ) )
 
     def get_predictive_mean(self, x_input): 
+        """
+        Returns the predictive mean for the inputs. Relies on the precomputed alpha values.
+        """
         K = self.kernel(x_input, self.pseudo_inputs)
         return K.dot(self.alpha)
+
+    def get_predictive_variance(self, x_input):
+        # TODO
+        raise NameError("predictive variance not implemented yet")
+        return None
 
 
 # Get the data
