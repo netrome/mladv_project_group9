@@ -40,9 +40,9 @@ def get_kernel_function(hyp):
         This function returns the matrix K so that K[i, j] = K(xi, xj).
         This can possibly be optimized by the use of matrix algebra instead of for loops.
         """
-        K = np.zeros(x1.shape[1], x2.shape[1])
-        for i in range(x1.shape[1]):
-            for j in range(x2.shape[1]):
+        K = np.zeros([x1.shape[0], x2.shape[0]])
+        for i in range(x1.shape[0]):
+            for j in range(x2.shape[0]):
                 K[i, j] = c * np.exp( (-1/2) * ( b @ ((x1[i] - x2[j])**2) ) )
         return K
     return kernel
@@ -58,11 +58,14 @@ class SPGP_blubb:
         Sets arbitrary hyperparameters, noise and pseudo inputs so that the model works.
         Requires the data to have more than 20 data points
         """
-        dim = X_tr.shape[1]
-        self.hyp = [1, np.ones(dim)]
+        self.N, self.dim = X_tr.shape
+        self.n = 20
+        self.hyp = [1, np.ones(self.dim)]
         self.sigma = 1
         self.kernel = get_kernel_function(self.hyp)
-        self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], 20)] 
+        self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.n)] 
+        self.X_tr = X_tr
+        self.Y_tr = Y_tr
 
 
     def set_kernel(self, hyp):
@@ -74,22 +77,41 @@ class SPGP_blubb:
 
 
     def do_precomputations(self):
-        # TODO
-        pass
-        
+        K_M = self.kernel(self.pseudo_inputs, self.pseudo_inputs) + 1e-6*np.eye(self.n) # Added jitter
+        #L = np.linalg.cholesky(K_M) Maybe not necessary
+        K_MN = self.kernel(self.pseudo_inputs, self.X_tr)
+        K_NM = np.transpose(K_MN)
+        K_N = self.kernel(self.X_tr, self.X_tr)
+
+        Q_N = K_NM.dot( np.linalg.inv(K_M).dot( K_MN ) )
+        Lambda_sigma = np.diag(np.diag(K_N - Q_N) + self.sigma**2) 
+        LS_inv = np.linalg.inv(Lambda_sigma)
+
+        B = K_M + K_MN.dot( LS_inv ).dot(K_NM)
+
+        # Save stuff to be used in predictions
+        self.B_inv = np.linalg.inv(B)
+        self.alpha = self.B_inv.dot( K_MN.dot( LS_inv.dot( self.Y_tr ) ) )
+
+    def get_predictive_mean(self, x_input): 
+        K = self.kernel(x_input, self.pseudo_inputs)
+        return K.dot(self.alpha)
 
 
-# Plot the first dimensions of the data
+# Get the data
 # X, T = load_data("kin40k.mat")
 X, T = load_data("pumadyn32nm.mat")
-X, T = hallucinate_data(3, 100)
-print(T.shape)
+X, T = hallucinate_data(1, 100)  #1D-data is plottable
 
+# Create the process
 process = SPGP_blubb(X, T)
+process.do_precomputations()
 
-#for i in range(X.shape[1]):
-#    if i>3:
-#        break
-#    plt.plot(X[:, i], T, '*')
-#    plt.show()
+# Get the predictive mean
+X2 = np.linspace(-8, 8, 2000)
+mean = process.get_predictive_mean(X2)
 
+# Plot first dimension of data
+plt.plot(X[:, 0], T, 'r*')
+plt.plot(X2, mean, 'g')
+plt.show()
