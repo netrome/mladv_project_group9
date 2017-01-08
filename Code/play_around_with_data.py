@@ -43,7 +43,7 @@ def get_kernel_function(hyp):
         K = np.zeros([x1.shape[0], x2.shape[0]])
         for i in range(x1.shape[0]):
             for j in range(x2.shape[0]):
-                K[i, j] = c * np.exp( (-1/2) * ( b @ ((x1[i] - x2[j])**2) ) )
+                K[i, j] = c * np.exp( (-1/2) * ( b.dot( ( (x1[i] - x2[j])**2 ) ) ) )
         return K
     return kernel
 
@@ -61,7 +61,7 @@ class SPGP_blubb:
         self.N, self.dim = X_tr.shape
         self.n = 20
         self.hyp = [1, np.ones(self.dim)]
-        self.sigma = 1
+        self.sigma = 0.1
         self.kernel = get_kernel_function(self.hyp)
         self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.n)] 
         self.X_tr = X_tr
@@ -81,12 +81,13 @@ class SPGP_blubb:
         Do any calculation that can be performed without new data and save relevant results
         """
         K_M = self.kernel(self.pseudo_inputs, self.pseudo_inputs) + 1e-6*np.eye(self.n) # Added jitter
+        self.K_M_inv = np.linalg.inv(K_M)
         #L = np.linalg.cholesky(K_M) Maybe not necessary
         K_MN = self.kernel(self.pseudo_inputs, self.X_tr)
         K_NM = np.transpose(K_MN)
         K_N = self.kernel(self.X_tr, self.X_tr)
 
-        Q_N = K_NM.dot( np.linalg.inv(K_M).dot( K_MN ) )
+        Q_N = K_NM.dot( self.K_M_inv.dot( K_MN ) )
         Lambda_sigma = np.diag(np.diag(K_N - Q_N) + self.sigma**2) 
         LS_inv = np.linalg.inv(Lambda_sigma)
 
@@ -104,9 +105,18 @@ class SPGP_blubb:
         return K.dot(self.alpha)
 
     def get_predictive_variance(self, x_input):
-        # TODO
-        raise NameError("predictive variance not implemented yet")
-        return None
+        """
+        Returns the predictive variance for the inputs.
+        """
+        var = np.zeros([x_input.shape[0], 1])
+        for i, x in enumerate(x_input):
+            x = np.reshape(x, [1, x.size])
+            K_star = self.kernel(x, x)
+            K_starM = self.kernel(x, self.pseudo_inputs)
+            K_Mstar = np.transpose(K_starM)
+
+            var[i] = K_star - K_starM.dot(self.K_M_inv - self.B_inv).dot(K_Mstar) + self.sigma**2
+        return var
 
 
 # Get the data
@@ -119,10 +129,14 @@ process = SPGP_blubb(X, T)
 process.do_precomputations()
 
 # Get the predictive mean
-X2 = np.linspace(-8, 8, 2000)
+X2 = np.linspace(-8, 8, 200)
 mean = process.get_predictive_mean(X2)
+var = process.get_predictive_variance(X2)
+std = np.sqrt(var)
 
 # Plot first dimension of data
 plt.plot(X[:, 0], T, 'r*')
 plt.plot(X2, mean, 'g')
+plt.plot(X2, mean + std, 'm')
+plt.plot(X2, mean - std, 'm')
 plt.show()
