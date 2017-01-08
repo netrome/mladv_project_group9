@@ -21,7 +21,7 @@ def hallucinate_data(dim, n):
     Create simple data to work with where X is a [n x dim] matrix and Y is a [n x 1] matrix.
     """
     X = np.random.multivariate_normal(np.zeros(dim), np.eye(dim), n)
-    Y = np.sin(X.sum(1)*2)
+    Y = np.sin(X.sum(1)*2) + np.random.normal(0, 0.2, n)
     Y = np.reshape(Y, [Y.size, 1])
     return X, Y
 
@@ -61,7 +61,7 @@ class SPGP_blubb:
         self.N, self.dim = X_tr.shape
         self.n = 20
         self.hyp = [1, np.ones(self.dim)]
-        self.sigma = 0.1
+        self.sigma = 0.2
         self.kernel = get_kernel_function(self.hyp)
         self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.n)] 
         self.X_tr = X_tr
