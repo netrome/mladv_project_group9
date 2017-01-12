@@ -11,8 +11,8 @@ def get_kernel_function(hyp):
     b = hyp[1]
     def kernel(x1, x2):
         """
-        x1 is assumed to be of shape [n x i].
-        x2 is assumed to be of shape [n x j].
+        x1 is assumed to be of shape [dim x i].
+        x2 is assumed to be of shape [dim x j].
         This function returns the matrix K so that K[i, j] = K(xi, xj).
         This can possibly be optimized by the use of matrix algebra instead of for loops.
         """
