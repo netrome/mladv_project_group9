@@ -1,7 +1,7 @@
 # Created by Mårten Nilsson 2017-01-09 to illustrate a toy example of the SPGP implementation.
 import numpy as np
 import matplotlib.pyplot as plt
-from data_loader import hallucinate_data
+from data_loader import hallucinate_data, load_data
 from SPGP import SPGP
 
 X, T = hallucinate_data(1, 100)  #1D-data is plottable
@@ -24,3 +24,8 @@ plt.plot(X2, mean - std, 'm')
 plt.plot(process.pseudo_inputs[:, 0], np.zeros(process.n) + np.min(T), 'b+')
 plt.show()
 
+# With real data, but no plot
+X, T = load_data("kin40k")
+process = SPGP(X, T)
+process.do_precomputations()
+print("Finished")

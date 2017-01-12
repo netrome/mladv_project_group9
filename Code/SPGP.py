@@ -13,6 +13,7 @@ def get_kernel_function(hyp):
         """
         x1 is assumed to be of shape [dim x i].
         x2 is assumed to be of shape [dim x j].
+        b is assumed to be of shape [dim].
         This function returns the matrix K so that K[i, j] = K(xi, xj).
         This can possibly be optimized by the use of matrix algebra instead of for loops.
         """
@@ -21,7 +22,24 @@ def get_kernel_function(hyp):
             for j in range(x2.shape[0]):
                 K[i, j] = c * np.exp( (-1/2) * ( b.dot( ( (x1[i] - x2[j])**2 ) ) ) )
         return K
-    return kernel
+
+    def diag_kernel(x1, x2):
+        """
+        x1 is assumed to be of shape [dim x i].
+        x2 is assumed to be of shape [dim x i].
+        b is assumed to be of shape [dim].
+        This function returns the matrix K so that K[i, j] = K(xi, xj).
+        This can possibly be optimized by the use of matrix algebra instead of for loops.
+        """
+        if (not (x1.shape == x2.shape)):
+            raise ValueError("Input need to be symmetric in diag_kernel")
+
+        K = np.zeros([x1.shape[0], x2.shape[0]])
+        for i in range(x1.shape[0]):
+                K[i, i] = c * np.exp( (-1/2) * ( b.dot( ( (x1[i] - x2[i])**2 ) ) ) )
+        return K
+
+    return kernel, diag_kernel
 
 class SPGP:
     """
@@ -37,7 +55,7 @@ class SPGP:
         self.n = 20
         self.hyp = [1, np.ones(self.dim)]
         self.sigma = 0.2
-        self.kernel = get_kernel_function(self.hyp)
+        self.kernel, self.diag_kernel = get_kernel_function(self.hyp)
         self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.n)] 
         self.X_tr = X_tr
         self.Y_tr = Y_tr
@@ -60,7 +78,7 @@ class SPGP:
         #L = np.linalg.cholesky(K_M)  - Cholesky decomposition
         K_MN = self.kernel(self.pseudo_inputs, self.X_tr)
         K_NM = np.transpose(K_MN)
-        K_N = self.kernel(self.X_tr, self.X_tr)
+        K_N = self.diag_kernel(self.X_tr, self.X_tr) # Note, only copute the diagonal!
 
         Q_N = K_NM.dot( self.K_M_inv.dot( K_MN ) )
         Lambda_sigma = np.diag(np.diag(K_N - Q_N) + self.sigma**2) 
