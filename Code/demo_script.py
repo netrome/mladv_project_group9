@@ -9,7 +9,14 @@ X, T = hallucinate_data(1, 100)  #1D-data is plottable
 # Create the process
 process = SPGP(X, T)
 process.do_precomputations()
-process.log_likelihood()
+print(process.log_likelihood())
+plt.plot(process.pseudo_inputs[:, 0], np.ones(process.M) * 0.1 + np.min(T), 'r+')
+X_bar, Theta = process.optimize_hyperparameters_numerical()
+process.pseudo_inputs = X_bar
+process.hyp = Theta
+process.set_kernel(Theta)
+process.do_precomputations()
+print(process.log_likelihood())
 # Get the predictive mean
 X2 = np.reshape(np.linspace(-8, 8, 200), (200, 1))
 mean = process.get_predictive_mean(X2)

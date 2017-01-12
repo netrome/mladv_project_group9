@@ -2,6 +2,9 @@
 # This file contains an object oriented implementation of the sparse pseudo-input Gaussian process..
 import numpy as np
 from numpy.linalg import det, inv, norm, cholesky
+from scipy.optimize import check_grad, approx_fprime
+from scipy.optimize import fmin_tnc, fmin_cg
+
 def get_kernel_function(hyp):
     """ 
     Returns a squared exponential covariance function based on the hyperparameters.
@@ -53,10 +56,12 @@ class SPGP:
         """
         self.N, self.dim = X_tr.shape
         self.M = 20
-        self.hyp = [1, np.ones(self.dim)]
+        #self.hyp = (np.random.rand(), np.random.rand(self.dim))
+        self.hyp = (1,np.ones(self.dim))
         self.sigma = 0.2
         self.kernel, self.diag_kernel = get_kernel_function(self.hyp)
         self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.M)] 
+        #self.pseudo_inputs = np.linspace(np.min(X_tr),np.max(X_tr),self.M)[:,np.newaxis]
         self.X_tr = X_tr
         self.Y_tr = Y_tr
 
@@ -66,7 +71,7 @@ class SPGP:
         Updates the kernel function with new hyperparameters
         """
         self.hyp = hyp
-        self.kernel = get_kernel_function(hyp)
+        self.kernel, self.diag_kernel = get_kernel_function(hyp)
 
 
     def do_precomputations(self):
@@ -89,7 +94,7 @@ class SPGP:
         # Save stuff to be used in predictions
         self.B_inv = np.linalg.inv(B)
         self.A = (self.sigma ** 2) * B
-        self.A_sqrt = cholesky(self.A) 
+        self.A_sqrt = cholesky(self.A + np.eye(self.A.shape[0])*0.0000000001) 
         self.alpha = self.B_inv.dot( K_MN.dot( LS_inv.dot( self.Y_tr ) ) )
         self.K_M_inv = K_M_inv
         self.K_M = K_M
@@ -119,14 +124,43 @@ class SPGP:
             var[i] = K_star - K_starM.dot(self.K_M_inv - self.B_inv).dot(K_Mstar) + self.sigma**2
         return var
 
-    def optimize_hyperparameters(self):
+    def optimize_hyperparameters_numerical(self):
         # TODO - gradient descent for pseudo inputs, noise parameter and kernel parameters
-        return
+        foo = SPGP(self.X_tr, self.Y_tr)
 
+        def f(X):
+            X_bar = np.reshape(X[:self.M*self.dim], (self.M, self.dim))
+            Theta = X[self.M*self.dim:]
+            Theta = (Theta[0], np.array(Theta[1:]))
+            foo.pseudo_inputs = X_bar
+            foo.set_kernel(Theta)
+            foo.do_precomputations()
+            return foo.log_likelihood()
+
+        param = fmin_cg(f, np.concatenate((np.reshape(self.pseudo_inputs, (self.M*self.dim)), [self.hyp[0]], self.hyp[1]), axis=0),epsilon = .000001,maxiter=35)
+
+#        print("nfeval:", nfeval)
+
+        X_bar = np.reshape(param[:self.M*self.dim], (self.M, self.dim))
+        Theta = param[self.M*self.dim:]
+        Theta = (Theta[0], np.array(Theta[1:]))
+
+        return X_bar, Theta
+   
     def derivate_log_likelihood(self):
         # TODO - return the gradient with respect to the hyperparameters
         return
-    
+    def derivate_log_likelihood_numerical(self,X):
+        foo = SPGP(self.X_tr,self.Y_tr)
+        def f(X):
+            X_bar = X[:self.M]
+            Theta = X[self.M:]
+            foo.pseudo_inputs = X_bar
+            foo.set_kernel(Theta)
+            foo.do_precomputations()
+            return foo.log_likelihood()
+        return approx_fprime(X,f,.001)
+
     def log_likelihood(self):
         # returns the log likelihood of the marginal for y
         K_M = self.K_M
@@ -147,4 +181,4 @@ class SPGP:
         L1 /= 2
         L2 = (sigma ** -2) * (norm(y_under) ** 2 - norm(inv(A_sqrt).dot(K_MN_under).dot(y_under)) ** 2)
         L2 /= 2
-        return L1 + L2 +(N/2 * np.log(2 * np.pi))
+        return L1 + L2 #+(N/2 * np.log(2 * np.pi))
