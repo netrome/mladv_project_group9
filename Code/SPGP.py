@@ -141,7 +141,7 @@ class SPGP:
         M = self.M
         y = self.Y_tr
         y_under = inv(Gamma_sqrt).dot(y)  
-        K_MN_under = inv(Gamma_sqrt).dot(K_MN) # Potential error!!!!!
+        K_MN_under = K_MN.dot( inv(Gamma_sqrt) )
 
         L1 = np.log(det(A)) - np.log(det(K_M)) + np.log(det(Gamma)) + (N - M) * np.log(sigma ** 2)
         L1 /= 2

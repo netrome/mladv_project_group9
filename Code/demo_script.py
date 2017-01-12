@@ -25,6 +25,7 @@ plt.plot(process.pseudo_inputs[:, 0], np.zeros(process.M) + np.min(T), 'b+')
 plt.show()
 
 # With real data, but no plot
+"""
 X, T = load_data("kin40k")
 process = SPGP(X, T)
 process.do_precomputations()
@@ -34,3 +35,4 @@ X, T = load_data("pumadyn32nm")
 process = SPGP(X, T)
 process.do_precomputations()
 print("Finished with pumadyn")
+"""
