@@ -9,7 +9,7 @@ X, T = hallucinate_data(1, 100)  #1D-data is plottable
 # Create the process
 process = SPGP(X, T)
 process.do_precomputations()
-
+process.log_likelihood()
 # Get the predictive mean
 X2 = np.reshape(np.linspace(-8, 8, 200), (200, 1))
 mean = process.get_predictive_mean(X2)
@@ -21,7 +21,7 @@ plt.plot(X[:, 0], T, 'r*')
 plt.plot(X2, mean, 'g')
 plt.plot(X2, mean + std, 'm')
 plt.plot(X2, mean - std, 'm')
-plt.plot(process.pseudo_inputs[:, 0], np.zeros(process.n) + np.min(T), 'b+')
+plt.plot(process.pseudo_inputs[:, 0], np.zeros(process.M) + np.min(T), 'b+')
 plt.show()
 
 # With real data, but no plot
