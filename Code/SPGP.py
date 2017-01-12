@@ -5,6 +5,8 @@ from numpy.linalg import det, inv, norm, cholesky
 from scipy.optimize import check_grad, approx_fprime
 from scipy.optimize import fmin_tnc, fmin_cg
 
+np.seterr(all = "raise")
+
 def get_kernel_function(hyp):
     """ 
     Returns a squared exponential covariance function based on the hyperparameters.
@@ -58,7 +60,7 @@ class SPGP:
         self.M = 20
         #self.hyp = (np.random.rand(), np.random.rand(self.dim))
         self.hyp = (1,np.ones(self.dim))
-        self.sigma = 0.2
+        self.sigma = 1
         self.kernel, self.diag_kernel = get_kernel_function(self.hyp)
         self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.M)] 
         #self.pseudo_inputs = np.linspace(np.min(X_tr),np.max(X_tr),self.M)[:,np.newaxis]
@@ -94,7 +96,7 @@ class SPGP:
         # Save stuff to be used in predictions
         self.B_inv = np.linalg.inv(B)
         self.A = (self.sigma ** 2) * B
-        self.A_sqrt = cholesky(self.A + np.eye(self.A.shape[0])*0.0000000001) 
+        self.A_sqrt = cholesky(self.A + np.eye(self.A.shape[0])*0.000001) 
         self.alpha = self.B_inv.dot( K_MN.dot( LS_inv.dot( self.Y_tr ) ) )
         self.K_M_inv = K_M_inv
         self.K_M = K_M
@@ -128,37 +130,48 @@ class SPGP:
     def optimize_hyperparameters_numerical(self):
         # TODO - gradient descent for pseudo inputs, noise parameter and kernel parameters
         foo = SPGP(self.X_tr, self.Y_tr)
+        foo.sigma = self.sigma
 
         def f(X):
             X_bar = np.reshape(X[:self.M*self.dim], (self.M, self.dim))
             Theta = X[self.M*self.dim:]
-            Theta = (Theta[0], np.array(Theta[1:]))
+            Theta = (Theta[0], np.array(Theta[1:-1]))
+            sigma = Theta[-1][0]
+            foo.sigma = sigma
             foo.pseudo_inputs = X_bar
             foo.set_kernel(Theta)
             foo.do_precomputations()
             return foo.log_likelihood()
 
-        param = fmin_cg(f, np.concatenate((np.reshape(self.pseudo_inputs, (self.M*self.dim)), [self.hyp[0]], self.hyp[1]), axis=0),epsilon = .000001,maxiter=35)
+        param = fmin_cg(f, np.concatenate((np.reshape(self.pseudo_inputs, (self.M*self.dim)), [self.hyp[0]], self.hyp[1], [self.sigma]), axis=0),epsilon = .00001,maxiter=35)
 
 #        print("nfeval:", nfeval)
 
         X_bar = np.reshape(param[:self.M*self.dim], (self.M, self.dim))
         Theta = param[self.M*self.dim:]
-        Theta = (Theta[0], np.array(Theta[1:]))
+        Theta = (Theta[0], np.array(Theta[1:-1]))
+        sigma = Theta[-1][0]
 
-        return X_bar, Theta
+        return X_bar, Theta, sigma
 
 
     def optimize_hyperparameters(self):
 
         # Sigma optimization implemented
-        l = 0.01 # Arbitrary value
-        for i in range(150):
+        l = 0.00001 # Arbitrary value
+        def get_l(i):
+            if i < 500:
+                return 0.0001
+            return 0.0000001
+
+        for i in range(1000):
             self.do_precomputations()
             dds = self.derivate_sigma() 
-            self.sigma -= np.sign(dds[0, 0])*l
-            print(self.sigma)
-            print(self.log_likelihood())
+            #self.sigma -= np.sign(dds[0, 0])*l
+            self.sigma -= dds[0,0] * get_l(i)
+            print("sigma =",self.sigma)
+            print("log_likelihood =",self.log_likelihood())
+        self.do_precomputations()
         return
 
     def derivate_log_likelihood(self):
@@ -202,7 +215,7 @@ class SPGP:
         K_MN = self.K_MN
         K_NM = self.K_NM
         Gamma = self.Gamma 
-        Gamma_sqrt = cholesky(Gamma)
+        Gamma_sqrt = cholesky(Gamma + np.eye(Gamma.shape[0])*.00001)
         A = self.A
         A_sqrt = self.A_sqrt
         N = self.N
@@ -210,7 +223,7 @@ class SPGP:
         y = self.Y_tr
         y_under = inv(Gamma_sqrt).dot(y)  
         K_MN_under = K_MN.dot( inv(Gamma_sqrt) )
-
+        print("sigma:",sigma)
         L1 = np.log(det(A)) - np.log(det(K_M)) + np.log(det(Gamma)) + (N - M) * np.log(sigma ** 2)
         L1 /= 2
         L2 = (sigma ** -2) * (norm(y_under) ** 2 - norm(inv(A_sqrt).dot(K_MN_under).dot(y_under)) ** 2)
