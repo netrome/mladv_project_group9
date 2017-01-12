@@ -115,3 +115,7 @@ class SPGP:
         # TODO - gradient descent for pseudo inputs, noise parameter and kernel parameters
         return
 
+    def derivate_log_likelihood(self):
+        # TODO - return the gradient with respect to the hyperparameters
+        return
+
