@@ -130,7 +130,7 @@ Use matrix inversion lemma again, we have
 \mathcal{L}_1&=\log(\det(\pmb{K}_M+\sigma^{-2}\pmb{K}_{MN}\pmb{\Gamma}^{-1}\pmb{K}_{NM})\det(\pmb{K}_M^{-1})\det(\sigma^2\pmb{\Gamma}))\nonumber\\
 &=\log(\det(\pmb{A}))-\log(\det(\pmb{K}_M))+\log(\det(\pmb{\Gamma}))+(N-M)\log(\sigma^2)\\
 \mathcal{L}_2&=\sigma^{-2}\pmb{y}(\pmb{\Gamma}^{-1}-\pmb{\Gamma}^{-1}\pmb{K}_{NM}\pmb{A}^{-1}\pmb{K}_{MN}\pmb{\Gamma}^{-1})\pmb{y}^T\\
-&=\sigma^{-2}(||\pmb{\Gamma}^{-\frac{1}{2}}\pmb{y}^T||^2-||\pmb{A}^{-\frac{1}{2}}(\pmb{\Gamma}^{-\frac{1}{2}}\pmb{K}_{NM})^T\pmb{\Gamma}^{-\frac{1}{2}}\pmb{y}^T||^2)
+&=\sigma^{-2}(||\pmb{\Gamma}^{-\frac{1}{2}}\pmb{y}^T||^2-||\pmb{A}^{-\frac{1}{2}}(\pmb{\Gamma}^{-\frac{1}{2}}\pmb{K}_{NM})^T(\pmb{\Gamma}^{-\frac{1}{2}}\pmb{y}^T)^T||^2)
 \end{align}
 where $\pmb{A}=\sigma^2\pmb{K}_M+\pmb{K}_{MN}\pmb{\Gamma}^{-1}\pmb{K}_{NM}$. The final negative log marginal likelihood is 
 \begin{align}
@@ -147,13 +147,40 @@ where the partial derivative takes elementwise. If $\pmb{A}$ is positive definit
 \end{align}
 
 First ignoring the noise variance $\sigma^2$, do partial derivative on $\pmb{\theta}$, we have
+\begin{equation}
+\begin{split}
+2\dot{\mathcal{L}}_1&=\mathrm{tr}(\pmb{A}^{-\frac{1}{2}}\dot{\pmb{A}}\pmb{A}^{-\frac{T}{2}})-\mathrm{tr}(\pmb{K}_M^{-\frac{1}{2}}\dot{\pmb{K}}_M\pmb{K}_M^{-\frac{T}{2}})+\mathrm{tr}(\pmb{\Gamma}^{-\frac{1}{2}}\dot{\pmb{\Gamma}}\pmb{\Gamma}^{-\frac{1}{2}})\\
+\dot{\mathcal{L}}_2&=\sigma^{-2}\left\lbrace-\frac{1}{2}\pmb{\Gamma}^{-\frac{1}{2}}\pmb{y}^T\pmb{\Gamma}^{-\frac{1}{2}}\dot{\pmb{\Gamma}}\pmb{\Gamma}^{-\frac{1}{2}}(\pmb{\Gamma}^{-\frac{1}{2}}\pmb{y}^T)^T\right.\\
+&+(\pmb{A}^{-\frac{1}{2}}(\pmb{\Gamma}^{-\frac{1}{2}}\pmb{K}_{NM})^T(\pmb{\Gamma}^{-\frac{1}{2}}\pmb{y}^T)^T)^T\left(\frac{1}{2}\pmb{A}^{-\frac{1}{2}}\dot{\pmb{A}}\pmb{A}^{-\frac{T}{2}}(\pmb{A}^{-\frac{1}{2}}(\pmb{\Gamma}^{-\frac{1}{2}}\pmb{K}_{NM})^T(\pmb{\Gamma}^{-\frac{1}{2}}\pmb{y}^T)^T)\right.\\
+&-\pmb{A}^{-\frac{1}{2}}(\pmb{\Gamma}^{-\frac{1}{2}}\dot{\pmb{K}}_{NM})^T(\pmb{\Gamma}^{-\frac{1}{2}}\pmb{y}^T)^T\\
+&\left.\left.+\pmb{A}^{-\frac{1}{2}}(\pmb{\Gamma}^{-\frac{1}{2}}\pmb{K}_{NM})^T(\pmb{\Gamma}^{-\frac{1}{2}}\dot{\pmb{\Gamma}}\pmb{\Gamma}^{-\frac{1}{2}})(\pmb{\Gamma}^{-\frac{1}{2}}\pmb{y}^T)^T\right)\right\rbrace
+\end{split}
+\end{equation}
+
+\begin{equation}
+\begin{split}
+\dot{\pmb{A}}&=\sigma^2\dot{\pmb{K}}_M+2\,\mathrm{sym}\,(\dot{\pmb{K}}_{MN}\pmb{\Gamma}^{-1}\pmb{K}_{NM})-\pmb{K}_{MN}\pmb{\Gamma}^{-1}\dot{\pmb{\Gamma}}\pmb{\Gamma}^{-1}\pmb{K}_{NM}\\
+\dot{\pmb{\Gamma}}&=\sigma^{-2}\mathrm{diag}(\dot{\pmb{K}}_N-2\dot{\pmb{K}}_{NM}\pmb{K}^{-1}_M\pmb{K}_{MN}+\pmb{K}_{NM}\pmb{K}^{-1}\dot{\pmb{K}}_{M}\pmb{K}^{-1}\pmb{K}_{MN})
+\end{split},
+\end{equation}
+where $\mathrm{sym}\,(\pmb{B})=(\pmb{B}+\pmb{B}^T)/2$, however, ignore this sym. To continue, rewrite the kernel
 \begin{align}
-\dot{\mathcal{L}}_1=\mathrm{tr}(\pmb{A}^{-\frac{1}{2}}\dot{\pmb{A}}\pmb{A}^{-\frac{T}{2}})-\mathrm{tr}(\pmb{K}_M^{-\frac{1}{2}}\dot{\pmb{K}}_M\pmb{K}_M^{-\frac{T}{2}})+\mathrm{tr}(\pmb{\Gamma}^{-\frac{1}{2}}\dot{\pmb{\Gamma}}\pmb{\Gamma}^{-\frac{1}{2}})
+&K(\pmb{x}^{(i)},\pmb{x}^{(j)})=c\exp [-\frac{1}{p}\sum_{k=1}^{D}b^{(p)}_k(x^{(i)}_k-x^{(j)}_k)^p], \quad\pmb{\theta}\equiv \lbrace c,\pmb{b}^{(p)}\rbrace,
 \end{align}
-
-
-
-
+so here is polynomial kernel, choice different $p$, suggest linear $p=1$, quadratic $p=2$ and cubic $p=3$. Now partial derivative w.r.t $c,\pmb{b}^{(p)}$,
+\begin{align}
+\frac{\partial}{\partial c}\pmb{K}_{NM}&=\frac{1}{c}\pmb{K}_{NM}\\
+\frac{\partial}{\partial c}\pmb{K}_{N}&=\frac{1}{c}\pmb{K}_{N}\\
+\mathrm{diag}\,(\frac{\partial}{\partial c}\pmb{K}_{N})&=\pmb{I}\\
+\frac{\partial}{\partial b_k^{(p)}}K(\pmb{x}^{(i)},\bar{\pmb{x}}^{(j)})&=-\frac{(x_k^{(i)}-\bar{x}_k^{(j)})^p}{p}K(\pmb{x}^{(i)},\bar{\pmb{x}}^{(j)})\\
+\mathrm{diag}\,(\frac{\partial}{\partial b_k^{(p)}}\pmb{K}_{N})&=\pmb{I}
+\end{align}
+w.r.t pseudo inputs
+\begin{align}
+\frac{\partial}{\partial \bar{x}_k^{(j')}}K(\pmb{x}^{(i)},\bar{\pmb{x}}^{(j)})&=\delta_{jj'}b_k^{(p)}(x_k^{(i)}-\bar{x}_k^{(j')})^{p-1}K(\pmb{x}^{(i)},\bar{\pmb{x}}^{(j')})\\
+\frac{\partial}{\partial \bar{x}_k^{(i')}}K(\bar{\pmb{x}}^{(i)},\pmb{x}^{(j)})&=-\delta_{ii'}b_k^{(p)}(\bar{x}_k^{(i')}-x_k^{(j)})^{p-1}K(\bar{\pmb{x}}^{(i')},\pmb{x}^{(j')})\\
+\frac{\partial}{\partial \bar{x}_k^{(j')}}K(\bar{\pmb{x}}^{(i)},\bar{\pmb{x}}^{(j)})&=-\delta_{ij'}b_k^{(p)}(\bar{x}_k^{(j')}-\bar{x}_k^{(j)})^{p-1}K(\bar{\pmb{x}}^{(j')},\bar{\pmb{x}}^{(j)})\\&-\delta_{jj'}b_k^{(p)}(\bar{x}_k^{(j')}-\bar{x}_k^{(i)})^{p-1}K(\bar{\pmb{x}}^{(j')},\bar{\pmb{x}}^{(j)})
+\end{align}
 
 
 
