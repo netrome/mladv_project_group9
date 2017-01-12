@@ -10,6 +10,8 @@ X, T = hallucinate_data(1, 100)  #1D-data is plottable
 process = SPGP(X, T)
 process.do_precomputations()
 process.log_likelihood()
+process.optimize_hyperparameters()
+
 # Get the predictive mean
 X2 = np.reshape(np.linspace(-8, 8, 200), (200, 1))
 mean = process.get_predictive_mean(X2)
@@ -30,6 +32,7 @@ X, T = load_data("kin40k")
 process = SPGP(X, T)
 process.do_precomputations()
 print("Finished with kin40k")
+process.optimize_hyperparameters()
 
 X, T = load_data("pumadyn32nm")
 process = SPGP(X, T)

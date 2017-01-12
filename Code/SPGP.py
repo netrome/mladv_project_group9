@@ -54,7 +54,7 @@ class SPGP:
         self.N, self.dim = X_tr.shape
         self.M = 20
         self.hyp = [1, np.ones(self.dim)]
-        self.sigma = 0.2
+        self.sigma = 5
         self.kernel, self.diag_kernel = get_kernel_function(self.hyp)
         self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.M)] 
         self.X_tr = X_tr
@@ -97,6 +97,7 @@ class SPGP:
         self.K_MN = K_MN
         self.K_NM = K_NM
         self.Gamma = Gamma
+        self.Q_N = Q_N
 
     def get_predictive_mean(self, x_input): 
         """
@@ -121,11 +122,39 @@ class SPGP:
 
     def optimize_hyperparameters(self):
         # TODO - gradient descent for pseudo inputs, noise parameter and kernel parameters
+
+        # Sigma optimization implemented
+        l = 0.01 # Arbitrary value
+        for i in range(150):
+            self.do_precomputations()
+            dds = self.derivate_sigma() 
+            self.sigma -= np.sign(dds[0, 0])*l
+            print(self.sigma)
+            print(self.log_likelihood())
         return
 
     def derivate_log_likelihood(self):
         # TODO - return the gradient with respect to the hyperparameters
         return
+
+    def derivate_sigma(self):
+        Gamma = self.Gamma
+        Gamma_sqrt = cholesky(Gamma)
+        sigma_sq = self.sigma ** 2
+        A_inv = np.linalg.inv(self.A)
+        K_MN = self.K_MN.dot( inv(Gamma_sqrt) ) # Implicit underscore
+        K_NM = np.transpose(K_MN)
+        y = inv(Gamma_sqrt).dot(self.Y_tr)  
+
+        dL1 = (1 / sigma_sq) * (np.trace(inv(Gamma)) - np.trace(K_NM.dot( 
+                                                        A_inv ).dot( K_MN )))
+        dL1 /= 2
+
+        dL2 = norm(y) ** 2 + norm(K_NM.dot( A_inv ).dot( K_MN ).dot( y )) ** 2 
+        dL2 -= 2 * y.transpose().dot( K_NM ).dot( A_inv ).dot( K_MN ).dot( y )
+        dL2 *= -(1 /( sigma_sq ** 2) )
+        dL2 /= 2
+        return dL1 + dL2
     
     def log_likelihood(self):
         # returns the log likelihood of the marginal for y
@@ -148,3 +177,5 @@ class SPGP:
         L2 = (sigma ** -2) * (norm(y_under) ** 2 - norm(inv(A_sqrt).dot(K_MN_under).dot(y_under)) ** 2)
         L2 /= 2
         return L1 + L2 +(N/2 * np.log(2 * np.pi))
+
+
