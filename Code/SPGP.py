@@ -102,6 +102,7 @@ class SPGP:
         self.K_MN = K_MN
         self.K_NM = K_NM
         self.Gamma = Gamma
+        self.Q_N = Q_N
 
     def get_predictive_mean(self, x_input): 
         """
@@ -146,10 +147,24 @@ class SPGP:
         Theta = (Theta[0], np.array(Theta[1:]))
 
         return X_bar, Theta
-   
+
+
+    def optimize_hyperparameters(self):
+
+        # Sigma optimization implemented
+        l = 0.01 # Arbitrary value
+        for i in range(150):
+            self.do_precomputations()
+            dds = self.derivate_sigma() 
+            self.sigma -= np.sign(dds[0, 0])*l
+            print(self.sigma)
+            print(self.log_likelihood())
+        return
+
     def derivate_log_likelihood(self):
         # TODO - return the gradient with respect to the hyperparameters
         return
+
     def derivate_log_likelihood_numerical(self,X):
         foo = SPGP(self.X_tr,self.Y_tr)
         def f(X):
@@ -160,6 +175,25 @@ class SPGP:
             foo.do_precomputations()
             return foo.log_likelihood()
         return approx_fprime(X,f,.001)
+
+    def derivate_sigma(self):
+        Gamma = self.Gamma
+        Gamma_sqrt = cholesky(Gamma)
+        sigma_sq = self.sigma ** 2
+        A_inv = np.linalg.inv(self.A)
+        K_MN = self.K_MN.dot( inv(Gamma_sqrt) ) # Implicit underscore
+        K_NM = np.transpose(K_MN)
+        y = inv(Gamma_sqrt).dot(self.Y_tr)  
+
+        dL1 = (1 / sigma_sq) * (np.trace(inv(Gamma)) - np.trace(K_NM.dot( 
+                                                        A_inv ).dot( K_MN )))
+        dL1 /= 2
+
+        dL2 = norm(y) ** 2 + norm(K_NM.dot( A_inv ).dot( K_MN ).dot( y )) ** 2 
+        dL2 -= 2 * y.transpose().dot( K_NM ).dot( A_inv ).dot( K_MN ).dot( y )
+        dL2 *= -(1 /( sigma_sq ** 2) )
+        dL2 /= 2
+        return dL1 + dL2
 
     def log_likelihood(self):
         # returns the log likelihood of the marginal for y
@@ -182,3 +216,4 @@ class SPGP:
         L2 = (sigma ** -2) * (norm(y_under) ** 2 - norm(inv(A_sqrt).dot(K_MN_under).dot(y_under)) ** 2)
         L2 /= 2
         return L1 + L2 #+(N/2 * np.log(2 * np.pi))
+

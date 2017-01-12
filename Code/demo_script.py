@@ -17,6 +17,7 @@ process.hyp = Theta
 process.set_kernel(Theta)
 process.do_precomputations()
 print(process.log_likelihood())
+
 # Get the predictive mean
 X2 = np.reshape(np.linspace(-8, 8, 200), (200, 1))
 mean = process.get_predictive_mean(X2)
@@ -37,6 +38,7 @@ X, T = load_data("kin40k")
 process = SPGP(X, T)
 process.do_precomputations()
 print("Finished with kin40k")
+process.optimize_hyperparameters()
 
 X, T = load_data("pumadyn32nm")
 process = SPGP(X, T)
