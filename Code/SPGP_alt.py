@@ -61,8 +61,8 @@ class SPGP_alt:
         """
         self.N, self.dim = X_tr.shape
         self.M = 20
-        #self.hyp = (np.random.rand(), np.random.rand(self.dim))
-        self.hyp = [1,np.ones(self.dim)]
+        #self.hyp = (np.random.rand(), np.random.rand(self.dim))    
+        self.hyp = [1.2, np.random.rand(self.dim) + 1.001]
         self.sigma_sq = 5
         self.kernel, self.diag_kernel = get_kernel_function(self.hyp)
         self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.M)] 
@@ -161,23 +161,25 @@ class SPGP_alt:
     def optimize_hyperparameters(self):
         
         l = 0.01
-        iters = 3080
+        iters = 80
         for i in range(iters):
             self.do_differential_precomputations()      #PRECOMPUTATIONS - IMPORTAAAAANT
             
             dss, dhyp, dxb = self.derivate_log_likelihood()
 
             # Ugly hack
-            dss = np.sign(dss) * 10 * (np.exp((iters-i)/2/iters))
-
+            #dss = np.sign(dss) * 10 * (np.exp((iters-i)/2/iters))
+            
             # Update sigma_square
             print(self.sigma_sq)
             self.sigma_sq -= l*dss
             self.sigma_sq = np.abs(self.sigma_sq)
             
             # Update hyp
-            self.hyp[0] -= l*dhyp[0]
-            self.hyp[1] -= l*dhyp[1]*0.1
+            self.hyp[0] += l*dhyp[0]
+#            self.hyp[1] += l*np.sign(dhyp[1]) * 10 * (np.exp((iters-i)/2/iters))
+            self.hyp[1] += l*dhyp[1] *.1
+            #self.hyp[1] = np.abs(self.hyp[1])
             
             # Hack the b:s
             #self.hyp[1][self.hyp[1] < 0] = 0
