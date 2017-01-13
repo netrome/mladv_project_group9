@@ -159,7 +159,7 @@ class SPGP_alt:
             dss, dhyp, dxb = self.derivate_log_likelihood()
 
             # Ugly hack
-            dss = sign(dss) 
+            dss = np.sign(dss) 
 
             # Update sigma_square
             print(self.sigma_sq)
