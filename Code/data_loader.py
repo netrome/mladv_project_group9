@@ -20,7 +20,7 @@ def hallucinate_data(dim, n):
     Create simple data to work with where X is a [n x dim] matrix and Y is a [n x 1] matrix.
     """
     X = np.random.multivariate_normal(np.zeros(dim), np.eye(dim), n)
-    Y = np.sin(X.sum(1)*2) + np.random.normal(0, 0.8, n)
+    Y = np.sin(X.sum(1)*2) + np.random.normal(0, 0.9, n)
     Y = np.reshape(Y, [Y.size, 1])
     return X, Y
 
