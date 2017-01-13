@@ -136,6 +136,8 @@ class SPGP_alt:
         """
         self.K_N = self.diag_kernel(self.X_tr, self.X_tr) # Note, only copute the diagonal!
         self.K_M = self.kernel(self.pseudo_inputs, self.pseudo_inputs) + 1e-6*np.eye(self.M)
+        self.K_M_sqrt = cholesky(self.K_M)
+        self.K_M_sqrt_inv = inv(self.K_M_sqrt)
         self.K_M_inv = inv(self.K_M)
         self.K_MN = self.kernel(self.pseudo_inputs, self.X_tr)
         self.K_NM = np.transpose(self.K_MN)
@@ -145,7 +147,7 @@ class SPGP_alt:
         self.Gamma_inv = np.diag(np.diag(self.Gamma) ** (-1))    # It's diagonal
         self.Gamma_sqrt = self.Gamma ** (1/2)   
         self.Gamma_sqrt_inv = np.diag(np.diag(self.Gamma) ** (-1/2))
-
+        
         self.y_ = self.Gamma_sqrt_inv.dot(self.Y_tr)
         self.K_NM_ = self.Gamma_sqrt_inv.dot(self.K_NM)
         self.K_MN_ = self.K_NM_.transpose()
@@ -189,16 +191,33 @@ class SPGP_alt:
     def derivate_nasty(self, dKs ):
         """ Do nasty stuff """
         dK_M, dK_N, dK_NM = dKs
-        A = self.A
-
+        dK_MN = dK_NM.T
+        dK_MN_ = dK_MN @ self.Gamma_sqrt_inv
+        
         dGamma = self.sigma_sq * np.diag(np.diag( dK_N - 2*dK_NM.dot(self.K_M_inv).dot(self.K_MN) +
                             self.K_NM.dot(self.K_M_inv).dot(dK_M).dot(self.K_M_inv).dot(self.K_MN) ))
         dA = self.sigma_sq * dK_M + 2 * (dK_NM.transpose() @ (self.Gamma_inv) @ (self.K_NM)) - (
-             self.K_MN @ ( self.Gamma_inv ) @ ( dGamma ) @ ( self.Gamma_inv ) @ ( self.K_NM )  )
-
-        dL1 = 1
-
-        return 0
+             self.K_MN @ ( self.Gamma_inv ) @ ( dGamma ) @ ( self.Gamma_inv ) @ ( self.K_NM ))
+         
+        dGamma_ = self.Gamma_sqrt_inv @ dGamma @ self.Gamma_sqrt_inv
+        
+        dL1 = (
+            np.trace(self.A_sqrt_inv @ dA @ self.A_sqrt_inv.T) -
+		    np.trace(self.K_M_sqrt_inv @ dK_M @ self.K_M_sqrt_inv.T) +
+            np.trace(self.Gamma_sqrt_inv @ dGamma @ self.Gamma_sqrt_inv)
+		) / 2
+		
+        dL2 = (
+            -(1/2) * self.y_.T @ dGamma_ @ self.y_ +
+            (self.A_sqrt_inv @ self.K_MN_ @ self.y_).T *
+            (
+                (1/2) * self.A_sqrt_inv @ dA @ self.A_sqrt_inv.T @ (self.A_sqrt_inv @ self.K_MN_ @ self.y_) -
+                self.A_sqrt_inv @ dK_MN_ @ self.y_ +
+                self.A_sqrt_inv @ self.K_MN_ @ dGamma_ @ self.y_
+            )
+        ) / self.sigma_sq
+		 
+        return dL1 + dL2
 
        
     def derivate_c(self):
