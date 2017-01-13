@@ -161,7 +161,7 @@ class SPGP_alt:
     def optimize_hyperparameters(self):
         
         l = 0.01
-        iters = 80
+        iters = 800
         for i in range(iters):
             self.do_differential_precomputations()      #PRECOMPUTATIONS - IMPORTAAAAANT
             
@@ -180,6 +180,8 @@ class SPGP_alt:
 #            self.hyp[1] += l*np.sign(dhyp[1]) * 10 * (np.exp((iters-i)/2/iters))
             self.hyp[1] += l*dhyp[1] *.1
             #self.hyp[1] = np.abs(self.hyp[1])
+            
+            self.pseudo_inputs += l*dxb
             
             # Hack the b:s
             #self.hyp[1][self.hyp[1] < 0] = 0
@@ -200,11 +202,15 @@ class SPGP_alt:
         dhyp[0] = self.derivate_nasty(self.derivate_c())
 
         for i in range(len(dhyp[1])):
-            pass
             val = self.derivate_nasty(self.derivate_b(i))
             dhyp[1][i] = val 
             
-        dxb = None
+        dxb = np.zeros([self.M, self.dim])
+        for m in range(self.M):
+            for d in range(self.dim):
+                val = self.derivate_nasty(self.derivate_kernel(m, d))
+                dxb[m, d] = val
+                
         return dss, dhyp, dxb
 
     def derivate_nasty(self, dKs ):
@@ -247,7 +253,7 @@ class SPGP_alt:
         
         return dL1 + dL2.squeeze()
 
-       
+    
     def derivate_c(self):
         """
         Returns the derivatives wrp c
@@ -259,6 +265,7 @@ class SPGP_alt:
         dK_N = np.eye(self.N)
         dK_NM = (1/c) * self.K_NM
         return dK_M, dK_N, dK_NM
+
 
     def derivate_b(self, k):
         """
@@ -280,7 +287,29 @@ class SPGP_alt:
         dK_N = np.zeros([self.N, self.N])
         
         return dK_M, dK_N, dK_NM
-
+        
+        
+    def derivate_kernel(self, m, k):
+        """ Returns the derivative wrp x_ik """
+        # Get reshaped x:es
+        x_M = np.reshape(self.pseudo_inputs[:, k],  [self.M, 1])
+        x_N = np.reshape(self.X_tr[:, k], [self.N, 1])
+        bk = self.hyp[1][k]
+        
+        # This one is zero
+        dK_N = np.zeros([self.N, self.N])
+        
+        # Subtraction matrix
+        M_M = (x_M - x_M.T)
+        dK_M = - bk * M_M * self.K_M
+        
+        # Subtraction matrix
+        M_NM = (x_N - x_M.T)
+        dK_NM = bk * M_NM * self.K_NM
+        
+        return dK_M, dK_N, dK_NM
+        
+        
     def derivate_sigma(self):
         Gamma = self.Gamma
         Gamma_sqrt = self.Gamma_sqrt
