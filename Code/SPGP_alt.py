@@ -1,10 +1,12 @@
 # Alternative version of the SPGP class to avoid merge conflicts
 # Created by Mårten Nilsson 2017-01-09. 
 # This file contains an object oriented implementation of the sparse pseudo-input Gaussian process..
+import functools as ft
 import numpy as np
 from numpy.linalg import det, inv, norm, cholesky
 from scipy.optimize import check_grad, approx_fprime
 from scipy.optimize import fmin_tnc, fmin_cg
+
 
 np.seterr(all = "raise")
 
@@ -132,6 +134,7 @@ class SPGP_alt:
         """
         Precomputations for the derivatives, used in the optimization
         """
+        self.K_N = self.diag_kernel(self.X_tr, self.X_tr) # Note, only copute the diagonal!
         self.K_M = self.kernel(self.pseudo_inputs, self.pseudo_inputs) + 1e-6*np.eye(self.M)
         self.K_M_inv = inv(self.K_M)
         self.K_MN = self.kernel(self.pseudo_inputs, self.X_tr)
@@ -149,7 +152,8 @@ class SPGP_alt:
 
         self.A = self.sigma_sq * self.K_M + self.K_MN.dot( self.Gamma_inv ).dot( self.K_NM ) 
         self.A_inv = inv(self.A)
-        #self.A_sqrt = cholesky(self.A)
+        self.A_sqrt = cholesky(self.A)
+        self.A_sqrt_inv = inv(A_sqrt)
 
     def optimize_hyperparameters(self):
         
@@ -169,10 +173,50 @@ class SPGP_alt:
         return
 
     def derivate_log_likelihood(self):
+        """
+        Giant gradient calculations
+        """
+
         dss = self.derivate_sigma()
-        dhyp = 0
-        dxb = 0
+        dhyp = (0, 0)
+        dhyp[0] = self.derivate_nasty(derivate_c())
+        for i in range(len(dhyp[1])):
+            dhyp[1][i] = derivate_nasty(derivative_b(i))
+            
+        dxb = None
         return dss, dhyp, dxb
+
+    def derivate_nasty(self, dK_M, dK_N, dK_NM):
+        """ Do nasty stuff """
+        A = self.A
+        A_
+
+        dGamma = self.sigma_sq * np.diag(np.diag( dK_N - 2*dK_NM.dot(self.K_M_inv).dot(self.K_MN) +
+                            self.K_NM.dot(self.K_M_inv).dot(dK_M).dot(self.K_M_inv).dot(self.K_MN) ))
+        dA = self.sigma_sq * dK_M + 2 * (dK_MN @ (self.Gamma_inv) @ (self.K_MN)) - (
+             self.K_MN @ ( self.Gamma_inv ) @ ( dGamma ) @ ( self.Gamma_inv ) @ ( self.K_NM )  )
+
+        dL1 = np.trace(  )
+
+
+       
+    def derivate_c(self):
+        """
+        Returns the derivatives wrp c
+        """
+        c = self.hyp[0]
+
+        dK_M = (1/c) * self.K_M
+        dK_N = (1/c) * self.K_N
+        dK_NM = (1/c) * self.K_NM
+        return dK_M, dK_N, dK_NM
+
+    def derivate_b(self, k):
+        """
+        Returns the derivatives wrp b_k
+        """
+        dK_M, dK_N, dK_MN = 0
+        return dK_M, dK_N, dK_NM
 
     def derivate_sigma(self):
         Gamma = self.Gamma
