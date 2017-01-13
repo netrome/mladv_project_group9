@@ -158,6 +158,9 @@ class SPGP_alt:
             self.do_differential_precomputations()
             dss, dhyp, dxb = self.derivate_log_likelihood()
 
+            # Ugly hack
+            dss = sign(dss) 
+
             # Update sigma_square
             print(self.sigma_sq)
             self.sigma_sq -= l*dss
