@@ -154,12 +154,13 @@ class SPGP_alt:
     def optimize_hyperparameters(self):
         
         l = 0.01
-        for i in range(80):
+        iters = 80
+        for i in range(iters):
             self.do_differential_precomputations()
             dss, dhyp, dxb = self.derivate_log_likelihood()
 
             # Ugly hack
-            dss = np.sign(dss) 
+            dss = np.sign(dss) * 10 * (np.exp((iters-i)/2/iters))
 
             # Update sigma_square
             print(self.sigma_sq)
