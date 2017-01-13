@@ -199,12 +199,12 @@ class SPGP_alt:
         dA = self.sigma_sq * dK_M + 2 * (dK_NM.transpose() @ (self.Gamma_inv) @ (self.K_NM)) - (
              self.K_MN @ ( self.Gamma_inv ) @ ( dGamma ) @ ( self.Gamma_inv ) @ ( self.K_NM ))
          
-        dGamma_ = self.Gamma_sqrt_inv @ dGamma @ self.Gamma_sqrt_inv
+        dGamma_ = self.Gamma_sqrt_inv * dGamma * self.Gamma_sqrt_inv
         
         dL1 = (
             np.trace(self.A_sqrt_inv @ dA @ self.A_sqrt_inv.T) -
 		    np.trace(self.K_M_sqrt_inv @ dK_M @ self.K_M_sqrt_inv.T) +
-            np.trace(self.Gamma_sqrt_inv @ dGamma @ self.Gamma_sqrt_inv)
+            np.trace(self.Gamma_sqrt_inv * dGamma * self.Gamma_sqrt_inv)
 		) / 2
 		
         dL2 = (
