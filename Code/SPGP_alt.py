@@ -62,7 +62,7 @@ class SPGP_alt:
         self.N, self.dim = X_tr.shape
         self.M = 20
         #self.hyp = (np.random.rand(), np.random.rand(self.dim))
-        self.hyp = (1,np.ones(self.dim))
+        self.hyp = [1,np.ones(self.dim)]
         self.sigma_sq = 5
         self.kernel, self.diag_kernel = get_kernel_function(self.hyp)
         self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.M)] 
@@ -153,7 +153,7 @@ class SPGP_alt:
         self.A = self.sigma_sq * self.K_M + self.K_MN.dot( self.Gamma_inv ).dot( self.K_NM ) 
         self.A_inv = inv(self.A)
         self.A_sqrt = cholesky(self.A)
-        self.A_sqrt_inv = inv(A_sqrt)
+        self.A_sqrt_inv = inv(self.A_sqrt)
 
     def optimize_hyperparameters(self):
         
@@ -178,26 +178,27 @@ class SPGP_alt:
         """
 
         dss = self.derivate_sigma()
-        dhyp = (0, 0)
-        dhyp[0] = self.derivate_nasty(derivate_c())
-        for i in range(len(dhyp[1])):
-            dhyp[1][i] = derivate_nasty(derivative_b(i))
+        dhyp = [0, self.hyp[1]]
+        dhyp[0] = self.derivate_nasty(self.derivate_c())
+        #for i in range(len(dhyp[1])):
+            #dhyp[1][i] = self.derivate_nasty(self.derivate_b(i))
             
         dxb = None
         return dss, dhyp, dxb
 
-    def derivate_nasty(self, dK_M, dK_N, dK_NM):
+    def derivate_nasty(self, dKs ):
         """ Do nasty stuff """
+        dK_M, dK_N, dK_NM = dKs
         A = self.A
-        A_
 
         dGamma = self.sigma_sq * np.diag(np.diag( dK_N - 2*dK_NM.dot(self.K_M_inv).dot(self.K_MN) +
                             self.K_NM.dot(self.K_M_inv).dot(dK_M).dot(self.K_M_inv).dot(self.K_MN) ))
-        dA = self.sigma_sq * dK_M + 2 * (dK_MN @ (self.Gamma_inv) @ (self.K_MN)) - (
+        dA = self.sigma_sq * dK_M + 2 * (dK_NM.transpose() @ (self.Gamma_inv) @ (self.K_NM)) - (
              self.K_MN @ ( self.Gamma_inv ) @ ( dGamma ) @ ( self.Gamma_inv ) @ ( self.K_NM )  )
 
-        dL1 = np.trace(  )
+        dL1 = 1
 
+        return 0
 
        
     def derivate_c(self):
@@ -215,8 +216,7 @@ class SPGP_alt:
         """
         Returns the derivatives wrp b_k
         """
-        dK_M, dK_N, dK_MN = 0
-        return dK_M, dK_N, dK_NM
+        pass
 
     def derivate_sigma(self):
         Gamma = self.Gamma
