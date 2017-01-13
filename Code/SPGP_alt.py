@@ -91,7 +91,7 @@ class SPGP_alt:
         Q_N = K_NM.dot(K_M_inv.dot( K_MN ) )
         Lambda_sigma = np.diag(np.diag(K_N - Q_N) + self.sigma_sq) 
         Gamma = Lambda_sigma / (self.sigma_sq)
-        LS_inv = np.linalg.inv(Lambda_sigma)
+        LS_inv = np.diag(np.diag(Lambda_sigma) ** (-1))
         B = K_M + K_MN.dot( LS_inv ).dot(K_NM)
 
         # Save stuff to be used in predictions
@@ -175,11 +175,11 @@ class SPGP_alt:
         Gamma_sqrt = self.Gamma_sqrt
         sigma_sq = self.sigma_sq
         A_inv = self.A_inv
-        K_MN = self.K_MN.dot( inv(Gamma_sqrt) ) # Implicit underscore
+        K_MN = self.K_MN.dot( self.Gamma_sqrt_inv ) # Implicit underscore
         K_NM = np.transpose(K_MN)
-        y = inv(Gamma_sqrt).dot(self.Y_tr)  
+        y = self.Gamma_sqrt_inv.dot(self.Y_tr)  
 
-        dL1 = (1 / sigma_sq) * (np.trace(inv(Gamma)) - np.trace(K_NM.dot( 
+        dL1 = (1 / sigma_sq) * (np.trace(self.Gamma_inv) - np.trace(K_NM.dot( 
                                                         A_inv ).dot( K_MN )))
         dL1 /= 2
 
