@@ -139,9 +139,9 @@ class SPGP_alt:
         self.Q_N = self.K_NM.dot(self.K_M_inv).dot(self.K_MN)
 
         self.Gamma = np.diag(np.diag(self.K_N - self.Q_N)/self.sigma_sq + 1) 
-        self.Gamma_inv = inv(self.Gamma)
-        self.Gamma_sqrt = cholesky(self.Gamma)
-        self.Gamma_sqrt_inv = inv(self.Gamma_sqrt)
+        self.Gamma_inv = np.diag(np.diag(self.Gamma) ** (-1))    # It's diagonal
+        self.Gamma_sqrt = self.Gamma ** (1/2)   
+        self.Gamma_sqrt_inv = np.diag(np.diag(self.Gamma) ** (-1/2))
 
         self.y_ = self.Gamma_sqrt_inv.dot(self.Y_tr)
         self.K_NM_ = self.Gamma_sqrt_inv.dot(self.K_NM)
