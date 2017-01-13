@@ -62,7 +62,7 @@ class SPGP_alt:
         self.N, self.dim = X_tr.shape
         self.M = 20
         #self.hyp = (np.random.rand(), np.random.rand(self.dim))    
-        self.hyp = [1.2, np.random.rand(self.dim) + 1.001]
+        self.hyp = [1.2, np.zeros(self.dim) + 1.001]
         self.sigma_sq = 5
         self.kernel, self.diag_kernel = get_kernel_function(self.hyp)
         self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.M)] 
@@ -161,17 +161,17 @@ class SPGP_alt:
     def optimize_hyperparameters(self):
         
         l = 0.01
-        iters = 800
+        iters = 400
         for i in range(iters):
             self.do_differential_precomputations()      #PRECOMPUTATIONS - IMPORTAAAAANT
             
             dss, dhyp, dxb = self.derivate_log_likelihood()
 
             # Ugly hack
-            #dss = np.sign(dss) * 10 * (np.exp((iters-i)/2/iters))
+            dss = np.sign(dss) * 10 * (np.exp((iters-i)/2/iters))
             
             # Update sigma_square
-            print(self.sigma_sq)
+            print("sigma_sq, ", self.sigma_sq)
             self.sigma_sq -= l*dss
             self.sigma_sq = np.abs(self.sigma_sq)
             
@@ -181,7 +181,8 @@ class SPGP_alt:
             self.hyp[1] += l*dhyp[1] *.1
             #self.hyp[1] = np.abs(self.hyp[1])
             
-            self.pseudo_inputs += l*dxb
+            print("dxb, ", dxb[4])
+            self.pseudo_inputs -= l * np.sign(dxb) 
             
             # Hack the b:s
             #self.hyp[1][self.hyp[1] < 0] = 0
@@ -299,13 +300,20 @@ class SPGP_alt:
         # This one is zero
         dK_N = np.zeros([self.N, self.N])
         
-        # Subtraction matrix
-        M_M = (x_M - x_M.T)
-        dK_M = - bk * M_M * self.K_M
+        # K_M
+        dK_M = np.zeros([self.M, self.M])
         
-        # Subtraction matrix
-        M_NM = (x_N - x_M.T)
-        dK_NM = bk * M_NM * self.K_NM
+        for j in range(self.M):
+            dK_M[m, j] += - bk * (x_M[m, 0] - x_M[j, 0]) * self.K_M[m, j]
+        
+        for i in range(self.M):
+            dK_M[i, m] += - bk * (x_M[m, 0] - x_M[i, 0]) * self.K_M[m, j]
+        
+        # K_NM
+        dK_NM = np.zeros([self.N, self.M])
+        
+        for j in range(self.N):
+            dK_NM[j, m] += - bk * (x_M[m, 0] - x_N[j, 0]) * self.K_NM[j, m]   
         
         return dK_M, dK_N, dK_NM
         
