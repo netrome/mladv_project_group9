@@ -193,7 +193,7 @@ class SPGP_alt:
             
         return
 
-    def derivate_log_likelihood(self):
+    def derivate_log_likelihood(self,sigma_sq,hyp,xb):
         """
         Giant gradient calculations
         """
@@ -207,6 +207,7 @@ class SPGP_alt:
             dhyp[1][i] = val 
             
         dxb = np.zeros([self.M, self.dim])
+        
         for m in range(self.M):
             for d in range(self.dim):
                 val = self.derivate_nasty(self.derivate_kernel(m, d))
@@ -214,15 +215,15 @@ class SPGP_alt:
                 
         return dss, dhyp, dxb
 
-    def derivate_nasty(self, dKs ):
+    def derivate_nasty(self, dKs,sigma_sq):
         """ Do nasty stuff """
         dK_M, dK_N, dK_NM = dKs
         dK_MN = dK_NM.T
         dK_MN_ = dK_MN @ self.Gamma_sqrt_inv
         
-        dGamma = self.sigma_sq * np.diag(np.diag( dK_N - 2*dK_NM.dot(self.K_M_inv).dot(self.K_MN) +
+        dGamma = sigma_sq * np.diag(np.diag( dK_N - 2*dK_NM.dot(self.K_M_inv).dot(self.K_MN) +
                             self.K_NM.dot(self.K_M_inv).dot(dK_M).dot(self.K_M_inv).dot(self.K_MN) ))
-        dA = self.sigma_sq * dK_M + 2 * (dK_NM.transpose() @ (self.Gamma_inv) @ (self.K_NM)) - (
+        dA = sigma_sq * dK_M + 2 * (dK_NM.transpose() @ (self.Gamma_inv) @ (self.K_NM)) - (
              self.K_MN @ ( self.Gamma_inv ) @ ( dGamma ) @ ( self.Gamma_inv ) @ ( self.K_NM ))
          
         dGamma_ = np.diag(np.diag(self.Gamma_sqrt_inv) * np.diag(dGamma) * np.diag(self.Gamma_sqrt_inv))
@@ -241,7 +242,7 @@ class SPGP_alt:
                 self.A_sqrt_inv @ dK_MN_ @ self.y_ +
                 self.A_sqrt_inv @ self.K_MN_ @ dGamma_ @ self.y_
             )
-        ) / self.sigma_sq
+        ) / sigma_sq
         
         #t1 =  -(1/2) * self.y_.T @ dGamma_ @ self.y_ 
         #t2 =   (self.A_sqrt_inv @ self.K_MN_ @ self.y_).T @
@@ -250,16 +251,16 @@ class SPGP_alt:
         #        self.A_sqrt_inv @ dK_MN_ @ self.y_ +
         #        self.A_sqrt_inv @ self.K_MN_ @ dGamma_ @ self.y_
         #    )
-        #dL2 = t1 + t2 *  self.sigma_sq
+        #dL2 = t1 + t2 *  sigma_sq
         
         return dL1 + dL2.squeeze()
 
     
-    def derivate_c(self):
+    def derivate_c(self,hyp):
         """
         Returns the derivatives wrp c
         """
-        c = self.hyp[0]
+        c = hyp[0]
 
         dK_M = (1/c) * self.K_M
         #dK_N = (1/c) * self.K_N
@@ -268,12 +269,12 @@ class SPGP_alt:
         return dK_M, dK_N, dK_NM
 
 
-    def derivate_b(self, k):
+    def derivate_b(self, k,pseudo_inputs):
         """
         Returns the derivatives wrp b_k
         """
         # k:th dimension of all data
-        x_M = np.reshape(self.pseudo_inputs[:, k],  [self.M, 1])
+        x_M = np.reshape(pseudo_inputs[:, k],  [self.M, 1])
         x_N = np.reshape(self.X_tr[:, k], [self.N, 1])
 	    
         # Subtraction matrix
@@ -290,12 +291,12 @@ class SPGP_alt:
         return dK_M, dK_N, dK_NM
         
         
-    def derivate_kernel(self, m, k):
+    def derivate_kernel(self, m, k, hyp,pseudo_inputs):
         """ Returns the derivative wrp x_ik """
         # Get reshaped x:es
-        x_M = np.reshape(self.pseudo_inputs[:, k],  [self.M, 1])
+        x_M = np.reshape(pseudo_inputs[:, k],  [self.M, 1])
         x_N = np.reshape(self.X_tr[:, k], [self.N, 1])
-        bk = self.hyp[1][k]
+        bk = hyp[1][k]
         
         # This one is zero
         dK_N = np.zeros([self.N, self.N])
@@ -318,10 +319,9 @@ class SPGP_alt:
         return dK_M, dK_N, dK_NM
         
         
-    def derivate_sigma(self):
+    def derivate_sigma(self,sigma_sq):
         Gamma = self.Gamma
         Gamma_sqrt = self.Gamma_sqrt
-        sigma_sq = self.sigma_sq
         A_inv = self.A_inv
         K_MN = self.K_MN.dot( self.Gamma_sqrt_inv ) # Implicit underscore
         K_NM = np.transpose(K_MN)
@@ -337,10 +337,9 @@ class SPGP_alt:
         dL2 /= 2
         return (dL1 + dL2)[0, 0]
 
-    def log_likelihood(self):
+    def log_likelihood(self,sigma_sq):
         # returns the log likelihood of the marginal for y
         K_M = self.K_M
-        sigma_sq = self.sigma_sq
         K_MN = self.K_MN
         K_NM = self.K_NM
         Gamma = self.Gamma 
