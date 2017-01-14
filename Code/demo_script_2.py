@@ -10,12 +10,13 @@ X, T = hallucinate_data(1, 100)  #1D-data is plottable
 process = SPGP_alt(X, T)
 process.do_precomputations()
 process.do_differential_precomputations()
-print(process.log_likelihood())
+print(process.log_likelihood(process.sigma_sq,process.hyp,process.pseudo_inputs))
 print()
 plt.plot(process.pseudo_inputs[:, 0], np.ones(process.M) * 0.1 + np.min(T), 'r+')
 process.optimize_hyperparameters()
+process.do_precomputations()
 print()
-print(process.log_likelihood())
+print(process.log_likelihood(process.sigma_sq,process.hyp,process.pseudo_inputs))
 
 # Get the predictive mean
 X2 = np.reshape(np.linspace(-8, 8, 200), (200, 1))

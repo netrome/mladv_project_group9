@@ -92,7 +92,7 @@ class SPGP_alt:
         K_N = self.diag_kernel(self.X_tr, self.X_tr) # Note, only copute the diagonal!
 
         Q_N = K_NM.dot(K_M_inv.dot( K_MN ) )
-        Lambda_sigma = np.diag(np.diag(K_N - Q_N) + self.sigma_sq) 
+        Lambda_sigma = np.diag(np.diag(K_N - Q_N) + self.sigma_sq)
         Gamma = Lambda_sigma / (self.sigma_sq)
         LS_inv = np.diag(np.diag(Lambda_sigma) ** (-1))
         B = K_M + K_MN.dot( LS_inv ).dot(K_NM)
@@ -142,18 +142,18 @@ class SPGP_alt:
         self.K_M_inv = inv(self.K_M)
         self.K_MN = self.kernel(self.pseudo_inputs, self.X_tr)
         self.K_NM = np.transpose(self.K_MN)
-        self.Q_N = self.K_NM.dot(self.K_M_inv).dot(self.K_MN)
+        self.Q_N = self.K_NM @ self.K_M_inv @ self.K_MN
 
-        self.Gamma = np.diag(np.diag(self.K_N - self.Q_N)/self.sigma_sq + 1) 
+        self.Gamma = np.diag(np.diag(self.K_N - self.Q_N)/self.sigma_sq + 1)
         self.Gamma_inv = np.diag(np.diag(self.Gamma) ** (-1))    # It's diagonal
         self.Gamma_sqrt = self.Gamma ** (1/2)   
         self.Gamma_sqrt_inv = np.diag(np.diag(self.Gamma) ** (-1/2))
         
-        self.y_ = self.Gamma_sqrt_inv.dot(self.Y_tr)
-        self.K_NM_ = self.Gamma_sqrt_inv.dot(self.K_NM)
+        self.y_ = self.Gamma_sqrt_inv @ self.Y_tr
+        self.K_NM_ = self.Gamma_sqrt_inv @ self.K_NM
         self.K_MN_ = self.K_NM_.transpose()
 
-        self.A = self.sigma_sq * self.K_M + self.K_MN.dot( self.Gamma_inv ).dot( self.K_NM ) 
+        self.A = self.sigma_sq * self.K_M + self.K_MN @ self.Gamma_inv @ self.K_NM 
         self.A_inv = inv(self.A)
         self.A_sqrt = cholesky(self.A)
         self.A_sqrt_inv = inv(self.A_sqrt)
@@ -165,7 +165,7 @@ class SPGP_alt:
         for i in range(iters):
             self.do_differential_precomputations()      #PRECOMPUTATIONS - IMPORTAAAAANT
             
-            dss, dhyp, dxb = self.derivate_log_likelihood()
+            dss, dhyp, dxb = self.derivate_log_likelihood(self.sigma_sq,self.hyp,self.pseudo_inputs)
 
             # Ugly hack
             dss = np.sign(dss) * 10 * (np.exp((iters-i)/2/iters))
@@ -173,22 +173,24 @@ class SPGP_alt:
             # Update sigma_square
             print("sigma_sq, ", self.sigma_sq)
             self.sigma_sq -= l*dss
-            self.sigma_sq = np.abs(self.sigma_sq)
+            #self.sigma_sq = np.abs(self.sigma_sq)
             
             # Update hyp
-            self.hyp[0] += l*dhyp[0]
+            self.hyp[0] -= l*dhyp[0]
 #            self.hyp[1] += l*np.sign(dhyp[1]) * 10 * (np.exp((iters-i)/2/iters))
-            self.hyp[1] += l*dhyp[1] *.1
+            self.hyp[1] -= l*dhyp[1] 
             #self.hyp[1] = np.abs(self.hyp[1])
             
             print("dxb, ", dxb[4])
-            self.pseudo_inputs -= l * np.sign(dxb) 
+            print("xb, ", self.pseudo_inputs[4])
+                        
+            self.pseudo_inputs -= l * dxb
             
             # Hack the b:s
             #self.hyp[1][self.hyp[1] < 0] = 0
             print("db", dhyp[1])
             print("b: ", self.hyp[1])
-            print()
+            print("c: ", self.hyp[0])
             self.set_kernel()
             
         return
@@ -227,7 +229,9 @@ class SPGP_alt:
         dK_MN = dK_NM.T
         dK_MN_ = dK_MN @ self.Gamma_sqrt_inv
         
-        dGamma = sigma_sq * np.diag(np.diag( dK_N - 2*dK_NM.dot(self.K_M_inv).dot(self.K_MN) +
+
+
+        dGamma = (1 / sigma_sq) * np.diag(np.diag( dK_N - 2*dK_NM.dot(self.K_M_inv).dot(self.K_MN) +
                             self.K_NM.dot(self.K_M_inv).dot(dK_M).dot(self.K_M_inv).dot(self.K_MN) ))
         dA = sigma_sq * dK_M + 2 * (dK_NM.transpose() @ (self.Gamma_inv) @ (self.K_NM)) - (
              self.K_MN @ ( self.Gamma_inv ) @ ( dGamma ) @ ( self.Gamma_inv ) @ ( self.K_NM ))
@@ -284,16 +288,16 @@ class SPGP_alt:
         x_N = np.reshape(self.X_tr[:, k], [self.N, 1])
 	    
         # Subtraction matrix
-        M_M = ((x_M - x_M.T) ** 2) / 2
+        M_M = -((x_M - x_M.T) ** 2) / 2
         dK_M = M_M * self.K_M # Elementwise multiplication
         	    
         # analogous
-        M_NM = ((x_N - x_M.T) ** 2) / 2
+        M_NM = -((x_N - x_M.T) ** 2) / 2
         dK_NM = M_NM * self.K_NM
         
-        # Possible error, bit I think this one will be zero
-        dK_N = np.zeros([self.N, self.N])
-        
+        # Possible error, but I think this one will be zero
+        dK_N = np.zeros([self.N, self.N])    
+
         return dK_M, dK_N, dK_NM
         
         
@@ -314,13 +318,13 @@ class SPGP_alt:
             dK_M[m, j] += - bk * (x_M[m, 0] - x_M[j, 0]) * self.K_M[m, j]
         
         for i in range(self.M):
-            dK_M[i, m] += - bk * (x_M[m, 0] - x_M[i, 0]) * self.K_M[m, j]
+            dK_M[i, m] += - bk * (x_M[m, 0] - x_M[i, 0]) * self.K_M[j, m]
         
         # K_NM
         dK_NM = np.zeros([self.N, self.M])
         
         for j in range(self.N):
-            dK_NM[j, m] += - bk * (x_M[m, 0] - x_N[j, 0]) * self.K_NM[j, m]   
+            dK_NM[j, m] += - bk * (x_M[m, 0] - x_N[j, 0]) * self.K_MN[m, j]   
         
         return dK_M, dK_N, dK_NM
         
@@ -341,7 +345,7 @@ class SPGP_alt:
         dL2 -= 2 * y.transpose().dot( K_NM ).dot( A_inv ).dot( K_MN ).dot( y )
         dL2 *= -(1 /( sigma_sq ** 2) )
         dL2 /= 2
-        return (dL1 + dL2)[0, 0]
+        return (dL1 + dL2)[0, 0] / 2
 
 
     def log_likelihood_packed(self,X):
@@ -355,6 +359,9 @@ class SPGP_alt:
             old_sigma_sq = self.sigma_sq
             old_hyp = self.hyp
             old_pseudo_inputs = self.pseudo_inputs
+            self.sigma_sq = sigma_sq
+            self.hyp = hyp
+            self.pseudo_inputs = pseudo_inputs
             self.set_kernel()
             self.do_precomputations()
             self.do_differential_precomputations()
@@ -363,19 +370,19 @@ class SPGP_alt:
         K_M = self.K_M
         K_MN = self.K_MN
         K_NM = self.K_NM
-        Gamma = self.Gamma 
+        Gamma = self.Gamma
         Gamma_sqrt = self.Gamma_sqrt
         A = self.A
         A_sqrt = self.A_sqrt
+        A_sqrt_inv = self.A_sqrt_inv
         N = self.N
         M = self.M
-        y = self.Y_tr
         y_under = self.y_
         K_MN_under = self.K_MN_
 
         L1 = np.log(det(A)) - np.log(det(K_M)) + np.log(det(Gamma)) + (N - M) * np.log(sigma_sq)
         L1 /= 2
-        L2 = (1/sigma_sq) * (norm(y_under) ** 2 - norm(inv(A_sqrt).dot(K_MN_under).dot(y_under)) ** 2)
+        L2 = (1/sigma_sq) * (norm(y_under) ** 2 - norm(A_sqrt_inv @ K_MN_under @ y_under) ** 2)
         L2 /= 2
 
         if recompute_stuffs:
@@ -387,15 +394,25 @@ class SPGP_alt:
             self.do_precomputations()
             self.do_differential_precomputations()
         
-        return L1 + L2 #+(N/2 * np.log(2 * np.pi))
+        return L1 + L2 + (N/2 * np.log(2 * np.pi))
     
     def check_gradient(self):
+
+        #print(check_grad(self.log_likelihood_packed
+        #    ,self.derivate_log_likelihood_packed
+        #    ,np.random.rand(get_packed_param_len(self.dim,self.M))))
+        
+        the_point = np.ones(get_packed_param_len(self.dim,self.M))
+        self.sigma_sq, self.hyp, self.pseudo_inputs = unpack_params(the_point,self.dim,self.M)
         self.set_kernel()
         self.do_precomputations()
         self.do_differential_precomputations()
-        print(check_grad(self.log_likelihood_packed
-            ,self.derivate_log_likelihood_packed
-            ,np.random.rand(get_packed_param_len(self.dim,self.M))))
+        dsigma_sq_num, dhyp_num, dpseudo_inputs_num = unpack_params(approx_fprime(the_point,self.log_likelihood_packed,epsilon = .00001),self.dim,self.M)
+        dsigma_sq, dhy, dpseudo_inputs = unpack_params(self.derivate_log_likelihood_packed(the_point),self.dim,self.M)
+        print("dsigma_sq - dsigma_sq_num = {0}, dsigma_sq = {1}, dpseudo_inputsnum = {2}".format(dsigma_sq - dsigma_sq_num,dsigma_sq ,dsigma_sq_num))
+        print("dc - dc_num = {0}, dc = {1}, dc_num = {2}".format(dhy[0] - dhyp_num[0],dhy[0],dhyp_num[0]))
+        print("db - db_num = {0}, db = {1}, db_num = {2}".format(dhy[1] - dhyp_num[1],dhy[1],dhyp_num[1]))
+        print("dpseudo_inputs - dpseudo_inputs_num = {0},\ndpseudo_inputs =\n{1},\ndpseudo_inputs_num =\n{2}".format(dpseudo_inputs - dpseudo_inputs_num,dpseudo_inputs,dpseudo_inputs_num))
 
 def unpack_params(X,dim,M):
     assert(len(X) == get_packed_param_len(dim,M))
