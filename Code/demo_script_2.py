@@ -14,6 +14,7 @@ print(process.log_likelihood())
 print()
 plt.plot(process.pseudo_inputs[:, 0], np.ones(process.M) * 0.1 + np.min(T), 'r+')
 process.optimize_hyperparameters()
+process.do_precomputations()
 print()
 print(process.log_likelihood())
 

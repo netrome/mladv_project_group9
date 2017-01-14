@@ -173,7 +173,7 @@ class SPGP_alt:
             # Update sigma_square
             print("sigma_sq, ", self.sigma_sq)
             self.sigma_sq -= l*dss
-            self.sigma_sq = np.abs(self.sigma_sq)
+            #self.sigma_sq = np.abs(self.sigma_sq)
             
             # Update hyp
             self.hyp[0] -= l*dhyp[0]
@@ -182,8 +182,9 @@ class SPGP_alt:
             #self.hyp[1] = np.abs(self.hyp[1])
             
             print("dxb, ", dxb[4])
+            print("xb, ", self.pseudo_inputs[4])
                         
-            #self.pseudo_inputs -= l * np.sign(dxb)
+            self.pseudo_inputs -= l * dxb
             
             # Hack the b:s
             #self.hyp[1][self.hyp[1] < 0] = 0
@@ -308,13 +309,13 @@ class SPGP_alt:
             dK_M[m, j] += - bk * (x_M[m, 0] - x_M[j, 0]) * self.K_M[m, j]
         
         for i in range(self.M):
-            dK_M[i, m] += - bk * (x_M[m, 0] - x_M[i, 0]) * self.K_M[m, j]
+            dK_M[i, m] += - bk * (x_M[m, 0] - x_M[i, 0]) * self.K_M[j, m]
         
         # K_NM
         dK_NM = np.zeros([self.N, self.M])
         
         for j in range(self.N):
-            dK_NM[j, m] += - bk * (x_M[m, 0] - x_N[j, 0]) * self.K_NM[j, m]   
+            dK_NM[j, m] += - bk * (x_M[m, 0] - x_N[j, 0]) * self.K_MN[m, j]   
         
         return dK_M, dK_N, dK_NM
         
