@@ -5,7 +5,7 @@ from data_loader import hallucinate_data, load_data, load_original_toy_data
 from SPGP_alt import SPGP_alt
 
 X, T = load_original_toy_data() 
-X_b = np.linspace(0, 1, 9) + 0.8   # Set pseudo inputs
+X_b = np.linspace(0, 1, 9)   # Set pseudo inputs
 X_b = np.reshape(X_b, [9, 1])
 
 print(X)
@@ -37,5 +37,8 @@ plt.plot(X2, mean, 'g')
 plt.plot(X2, mean + std, 'm')
 plt.plot(X2, mean - std, 'm')
 plt.plot(process.pseudo_inputs[:, 0], np.zeros(process.M) + np.min(T), 'b+')
+
+plt.xlabel("input")
+plt.ylabel("output")
 plt.show()
 

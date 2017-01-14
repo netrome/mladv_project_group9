@@ -161,7 +161,7 @@ class SPGP_alt:
     def optimize_hyperparameters(self):
         
         l = 0.01
-        iters = 780
+        iters = 180
         for i in range(iters):
             self.do_differential_precomputations()      #PRECOMPUTATIONS - IMPORTAAAAANT
             
@@ -169,6 +169,7 @@ class SPGP_alt:
 
             # Ugly hack
             dss = np.sign(dss) * 10 * (np.exp((iters-i)/2/iters))
+            dx_val = 10 * (np.exp((iters-i)/2/iters))
             
             # Update sigma_square
             print("sigma_sq, ", self.sigma_sq)
@@ -184,7 +185,7 @@ class SPGP_alt:
             print("dxb, ", dxb[4])
             print("xb, ", self.pseudo_inputs[4])
                         
-            self.pseudo_inputs -= l * dxb 
+            self.pseudo_inputs -= l * np.sign(dxb) * dx_val
             
             # Hack the b:s
             #self.hyp[1][self.hyp[1] < 0] = 0
