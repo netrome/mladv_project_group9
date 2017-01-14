@@ -176,19 +176,20 @@ class SPGP_alt:
             self.sigma_sq = np.abs(self.sigma_sq)
             
             # Update hyp
-            self.hyp[0] += l*dhyp[0]
+            self.hyp[0] -= l*dhyp[0]
 #            self.hyp[1] += l*np.sign(dhyp[1]) * 10 * (np.exp((iters-i)/2/iters))
-            self.hyp[1] += l*dhyp[1] *.1
+            self.hyp[1] -= l*dhyp[1] 
             #self.hyp[1] = np.abs(self.hyp[1])
             
             print("dxb, ", dxb[4])
-            self.pseudo_inputs -= l * np.sign(dxb) 
+                        
+            #self.pseudo_inputs -= l * np.sign(dxb)
             
             # Hack the b:s
             #self.hyp[1][self.hyp[1] < 0] = 0
             print("db", dhyp[1])
             print("b: ", self.hyp[1])
-            print()
+            print("c: ", self.hyp[0])
             self.set_kernel()
             
         return
@@ -220,7 +221,7 @@ class SPGP_alt:
         dK_MN = dK_NM.T
         dK_MN_ = dK_MN @ self.Gamma_sqrt_inv
         
-        dGamma = self.sigma_sq * np.diag(np.diag( dK_N - 2*dK_NM.dot(self.K_M_inv).dot(self.K_MN) +
+        dGamma = (1 / self.sigma_sq) * np.diag(np.diag( dK_N - 2*dK_NM.dot(self.K_M_inv).dot(self.K_MN) +
                             self.K_NM.dot(self.K_M_inv).dot(dK_M).dot(self.K_M_inv).dot(self.K_MN) ))
         dA = self.sigma_sq * dK_M + 2 * (dK_NM.transpose() @ (self.Gamma_inv) @ (self.K_NM)) - (
              self.K_MN @ ( self.Gamma_inv ) @ ( dGamma ) @ ( self.Gamma_inv ) @ ( self.K_NM ))
@@ -277,16 +278,16 @@ class SPGP_alt:
         x_N = np.reshape(self.X_tr[:, k], [self.N, 1])
 	    
         # Subtraction matrix
-        M_M = ((x_M - x_M.T) ** 2) / 2
+        M_M = -((x_M - x_M.T) ** 2) / 2
         dK_M = M_M * self.K_M # Elementwise multiplication
         	    
         # analogous
-        M_NM = ((x_N - x_M.T) ** 2) / 2
+        M_NM = -((x_N - x_M.T) ** 2) / 2
         dK_NM = M_NM * self.K_NM
         
-        # Possible error, bit I think this one will be zero
-        dK_N = np.zeros([self.N, self.N])
-        
+        # Possible error, but I think this one will be zero
+        dK_N = np.zeros([self.N, self.N])    
+
         return dK_M, dK_N, dK_NM
         
         
