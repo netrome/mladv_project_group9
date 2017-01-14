@@ -70,6 +70,12 @@ class SPGP_alt:
         self.X_tr = X_tr
         self.Y_tr = Y_tr
 
+    def update_random_pseudo_inputs(self, X_tr):
+        """
+        Updates the pseudo input points
+        """
+        self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.M)] 
+
 
     def set_kernel(self, hyp=None):
         """
@@ -161,7 +167,7 @@ class SPGP_alt:
     def optimize_hyperparameters(self):
         
         l = 0.01
-        iters = 180
+        iters = 190
         for i in range(iters):
             self.do_differential_precomputations()      #PRECOMPUTATIONS - IMPORTAAAAANT
             

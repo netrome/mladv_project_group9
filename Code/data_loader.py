@@ -14,6 +14,14 @@ def load_data(name):
     T = mat["T_tr"]
     return X, T
 
+def load_test_data(name):
+    """
+    Load the test data from one of the datasets.
+    """
+    mat = loadmat(data_folder + name)
+    X = mat["X_tst"]
+    T = mat["T_tst"]
+    return X, T
 
 def hallucinate_data(dim, n):
     """
@@ -34,3 +42,4 @@ def load_original_toy_data():
     X = np.reshape(X, [len(X), 1])
     T = np.reshape(T, [len(T), 1])
     return X, T
+

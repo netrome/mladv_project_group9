@@ -36,7 +36,7 @@ plt.show()
 X, T = load_data("kin40k")
 process = SPGP_alt(X, T)
 process.do_precomputations()
-print("Finished with kin40k")
+print("Finished with precomputations")
 process.optimize_hyperparameters()
 
 """
