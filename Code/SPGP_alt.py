@@ -100,7 +100,7 @@ class SPGP_alt:
         # Save stuff to be used in predictions
         self.B_inv = np.linalg.inv(B)
         self.A = (self.sigma_sq) * B
-        self.A_sqrt = cholesky(self.A + np.eye(self.A.shape[0])*0.000001) 
+        self.A_sqrt = cholesky(self.A + np.eye(self.A.shape[0])*1e-6) 
         self.alpha = self.B_inv.dot( K_MN.dot( LS_inv.dot( self.Y_tr ) ) )
         self.K_M_inv = K_M_inv
         self.K_M = K_M
@@ -345,7 +345,7 @@ class SPGP_alt:
         dL2 -= 2 * y.transpose().dot( K_NM ).dot( A_inv ).dot( K_MN ).dot( y )
         dL2 *= -(1 /( sigma_sq ** 2) )
         dL2 /= 2
-        return (dL1 + dL2)[0, 0] / 2
+        return (dL1 + dL2)[0, 0]
 
 
     def log_likelihood_packed(self,X):
@@ -402,7 +402,7 @@ class SPGP_alt:
         #    ,self.derivate_log_likelihood_packed
         #    ,np.random.rand(get_packed_param_len(self.dim,self.M))))
         
-        the_point = np.ones(get_packed_param_len(self.dim,self.M))
+        the_point = np.random.rand(get_packed_param_len(self.dim,self.M))
         self.sigma_sq, self.hyp, self.pseudo_inputs = unpack_params(the_point,self.dim,self.M)
         self.set_kernel()
         self.do_precomputations()
