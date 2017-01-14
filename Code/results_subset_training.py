@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 from data_loader import hallucinate_data, load_data, load_test_data, reduce_data
 from SPGP_alt import SPGP_alt
 
-M = 20
+M = 200
 
 # Kin40k data
 X, T = load_data("kin40k")
-X_red = reduce_data(X, 400)
-T_red = reduce_data(T, 400)
+X_red = reduce_data(X, 800)
+T_red = reduce_data(T, 800)
 opt_gp = SPGP_alt(X_red, T_red)
 
 # Optimeze pseudo-inputs and kernel/noise parameters
@@ -17,7 +17,7 @@ opt_gp.optimize_hyperparameters()
 
 # Real process
 process = SPGP_alt(X, T)
-process.pseudo_inputs = opt_gp.pseudo_inputs()
+process.pseudo_inputs = opt_gp.pseudo_inputs
 process.hyp = opt_gp.hyp
 process.sigma_sq = opt_gp.sigma_sq
 
