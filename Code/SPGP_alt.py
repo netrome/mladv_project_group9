@@ -5,10 +5,10 @@ import functools as ft
 import numpy as np
 from numpy.linalg import det, inv, norm, cholesky
 from scipy.optimize import check_grad, approx_fprime
-from scipy.optimize import fmin_tnc, fmin_cg
+from scipy.optimize import fmin_tnc, fmin_cg, fmin_bfgs, fmin_l_bfgs_b, fmin_ncg
 
 
-np.seterr(all = "raise")
+np.seterr(all = "warn")
 
 def get_kernel_function(hyp):
     """ 
@@ -65,11 +65,18 @@ class SPGP_alt:
         self.hyp = [1.2, np.zeros(self.dim) + 1.001]
         self.sigma_sq = 5
         self.kernel, self.diag_kernel = get_kernel_function(self.hyp)
-        self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.M)] 
+        self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.M)]
         #self.pseudo_inputs = np.linspace(np.min(X_tr),np.max(X_tr),self.M)[:,np.newaxis]
         self.X_tr = X_tr
         self.Y_tr = Y_tr
+        self.X = np.random.rand(get_packed_param_len(self.dim,self.M))
 
+    def update_stuff_if_nessesary(self,X):
+        if np.all(self.X != X):
+            self.X = X
+            self.set_kernel()
+            self.do_precomputations()
+            self.do_differential_precomputations()
 
     def set_kernel(self, hyp=None):
         """
@@ -157,47 +164,23 @@ class SPGP_alt:
         self.A_inv = inv(self.A)
         self.A_sqrt = cholesky(self.A)
         self.A_sqrt_inv = inv(self.A_sqrt)
+    
+    def log_like(self,X):
+        self.update_stuff_if_nessesary(X)
+        return self.log_likelihood_packed(X,False)
+
+    def dlog_like(self,X):
+        self.update_stuff_if_nessesary(X)
+        return self.derivate_log_likelihood_packed(X)
 
     def optimize_hyperparameters(self):
-        
-        l = 0.01
-        iters = 580
-        for i in range(iters):
-            self.do_differential_precomputations()      #PRECOMPUTATIONS - IMPORTAAAAANT
-            
-            dss, dhyp, dxb = self.derivate_log_likelihood(self.sigma_sq,self.hyp,self.pseudo_inputs)
-
-            # Ugly hack
-            dss = np.sign(dss) * 10 * (np.exp((iters-i)/2/iters))
-            
-            # Update sigma_square
-            print("sigma_sq, ", self.sigma_sq)
-            self.sigma_sq -= l*dss
-            self.sigma_sq = np.abs(self.sigma_sq)
-            
-            # Update hyp
-            self.hyp[0] -= l*dhyp[0]
-#            self.hyp[1] += l*np.sign(dhyp[1]) * 10 * (np.exp((iters-i)/2/iters))
-            self.hyp[1] -= l*dhyp[1] 
-            #self.hyp[1] = np.abs(self.hyp[1])
-            
-            print("dxb, ", dxb[4])
-            print("xb, ", self.pseudo_inputs[4])
-                        
-            self.pseudo_inputs -= l * dxb
-            
-            # Hack the b:s
-            #self.hyp[1][self.hyp[1] < 0] = 0
-            print("db", dhyp[1])
-            print("b: ", self.hyp[1])
-            print("c: ", self.hyp[0])
-            self.set_kernel()
-            
-        return
-
+        bounds = [(1e-6,None)] + [(1e-6,None)]*(self.dim+1) + [(None,None)]*(self.M * self.dim)
+        X_0 = pack_params(self.sigma_sq,self.hyp,self.pseudo_inputs,self.M,self.dim)
+        X,min_val, d = fmin_l_bfgs_b(self.log_like,X_0,self.dlog_like,bounds = bounds, factr=1e-7,)
+        self.sigma_sq, self.hyp, self.pseudo_inputs = unpack_params(X,self.dim,self.M)
+        print(self.sigma_sq)
     def derivate_log_likelihood_packed(self,X):
         sigma_sq, hyp, pseudo_inputs = unpack_params(X,self.dim,self.M)
-        print(pseudo_inputs.shape)
         dsigma_sq,dhyp,dpseudo_inputs = self.derivate_log_likelihood(sigma_sq,hyp,pseudo_inputs)
         return pack_params(dsigma_sq,dhyp,dpseudo_inputs,self.M,self.dim)
 
@@ -348,9 +331,9 @@ class SPGP_alt:
         return (dL1 + dL2)[0, 0]
 
 
-    def log_likelihood_packed(self,X):
+    def log_likelihood_packed(self,X,recompute_stuffs = True):
         sigma_sq, hyp, pseudo_inputs = unpack_params(X,self.dim,self.M)
-        return self.log_likelihood(sigma_sq,hyp,pseudo_inputs,recompute_stuffs = True)
+        return self.log_likelihood(sigma_sq,hyp,pseudo_inputs,recompute_stuffs = recompute_stuffs)
 
     def log_likelihood(self,sigma_sq,hyp,pseudo_inputs,recompute_stuffs = False):
         # returns the log likelihood of the marginal for y
@@ -379,8 +362,9 @@ class SPGP_alt:
         M = self.M
         y_under = self.y_
         K_MN_under = self.K_MN_
-
+        print("sigma_sq =",sigma_sq)
         L1 = np.log(det(A)) - np.log(det(K_M)) + np.log(det(Gamma)) + (N - M) * np.log(sigma_sq)
+        print("L1 =",L1)
         L1 /= 2
         L2 = (1/sigma_sq) * (norm(y_under) ** 2 - norm(A_sqrt_inv @ K_MN_under @ y_under) ** 2)
         L2 /= 2
