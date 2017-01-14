@@ -184,7 +184,7 @@ class SPGP_alt:
             print("dxb, ", dxb[4])
             print("xb, ", self.pseudo_inputs[4])
                         
-            self.pseudo_inputs -= l * dxb
+            self.pseudo_inputs -= l * dxb 
             
             # Hack the b:s
             #self.hyp[1][self.hyp[1] < 0] = 0
@@ -309,7 +309,7 @@ class SPGP_alt:
             dK_M[m, j] += - bk * (x_M[m, 0] - x_M[j, 0]) * self.K_M[m, j]
         
         for i in range(self.M):
-            dK_M[i, m] += - bk * (x_M[m, 0] - x_M[i, 0]) * self.K_M[j, m]
+            dK_M[i, m] += - bk * (x_M[m, 0] - x_M[i, 0]) * self.K_M[m, i]
         
         # K_NM
         dK_NM = np.zeros([self.N, self.M])
