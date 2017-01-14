@@ -193,24 +193,30 @@ class SPGP_alt:
             
         return
 
-    def derivate_log_likelihood(self,sigma_sq,hyp,xb):
+    def derivate_log_likelihood_packed(self,X):
+        sigma_sq, hyp, pseudo_inputs = unpack_params(X,self.dim,self.M)
+        print(pseudo_inputs.shape)
+        dsigma_sq,dhyp,dpseudo_inputs = self.derivate_log_likelihood(sigma_sq,hyp,pseudo_inputs)
+        return pack_params(dsigma_sq,dhyp,dpseudo_inputs,self.M,self.dim)
+
+    def derivate_log_likelihood(self,sigma_sq,hyp,pseudo_inputs):
         """
         Giant gradient calculations
         """
 
-        dss = self.derivate_sigma()
+        dss = self.derivate_sigma(sigma_sq)
         dhyp = [0, np.zeros(self.dim)]
-        dhyp[0] = self.derivate_nasty(self.derivate_c())
+        dhyp[0] = self.derivate_nasty(self.derivate_c(hyp),sigma_sq)
 
         for i in range(len(dhyp[1])):
-            val = self.derivate_nasty(self.derivate_b(i))
+            val = self.derivate_nasty(self.derivate_b(i,pseudo_inputs),sigma_sq)
             dhyp[1][i] = val 
             
         dxb = np.zeros([self.M, self.dim])
         
         for m in range(self.M):
             for d in range(self.dim):
-                val = self.derivate_nasty(self.derivate_kernel(m, d))
+                val = self.derivate_nasty(self.derivate_kernel(m, d,hyp,pseudo_inputs),sigma_sq)
                 dxb[m, d] = val
                 
         return dss, dhyp, dxb
@@ -327,7 +333,7 @@ class SPGP_alt:
         K_NM = np.transpose(K_MN)
         y = self.Gamma_sqrt_inv.dot(self.Y_tr)  
 
-        dL1 = (1 / sigma_sq) * (np.trace(self.Gamma_inv) - np.trace(K_NM.dot( 
+        dL1 = (1 / sigma_sq) * (np.trace(self.Gamma_inv) - np.trace(K_NM.dot(
                                                         A_inv ).dot( K_MN )))
         dL1 /= 2
 
@@ -337,8 +343,23 @@ class SPGP_alt:
         dL2 /= 2
         return (dL1 + dL2)[0, 0]
 
-    def log_likelihood(self,sigma_sq):
+
+    def log_likelihood_packed(self,X):
+        sigma_sq, hyp, pseudo_inputs = unpack_params(X,self.dim,self.M)
+        return self.log_likelihood(sigma_sq,hyp,pseudo_inputs,recompute_stuffs = True)
+
+    def log_likelihood(self,sigma_sq,hyp,pseudo_inputs,recompute_stuffs = False):
         # returns the log likelihood of the marginal for y
+        if recompute_stuffs:
+            #Modify object state for calculations
+            old_sigma_sq = self.sigma_sq
+            old_hyp = self.hyp
+            old_pseudo_inputs = self.pseudo_inputs
+            self.set_kernel()
+            self.do_precomputations()
+            self.do_differential_precomputations()
+
+        
         K_M = self.K_M
         K_MN = self.K_MN
         K_NM = self.K_NM
@@ -356,5 +377,39 @@ class SPGP_alt:
         L1 /= 2
         L2 = (1/sigma_sq) * (norm(y_under) ** 2 - norm(inv(A_sqrt).dot(K_MN_under).dot(y_under)) ** 2)
         L2 /= 2
-        return L1 + L2 #+(N/2 * np.log(2 * np.pi))
 
+        if recompute_stuffs:
+            #reset original state
+            self.sigma_sq = old_sigma_sq
+            self.hyp = old_hyp
+            self.pseudo_inputs = old_pseudo_inputs
+            self.set_kernel()            
+            self.do_precomputations()
+            self.do_differential_precomputations()
+        
+        return L1 + L2 #+(N/2 * np.log(2 * np.pi))
+    
+    def check_gradient(self):
+        self.set_kernel()
+        self.do_precomputations()
+        self.do_differential_precomputations()
+        print(check_grad(self.log_likelihood_packed
+            ,self.derivate_log_likelihood_packed
+            ,np.random.rand(get_packed_param_len(self.dim,self.M))))
+
+def unpack_params(X,dim,M):
+    assert(len(X) == get_packed_param_len(dim,M))
+    sigma_sq = X[0]
+    hyp = [X[1],X[2:2+dim]]
+    pseudo_inputs = X[2+dim:].reshape(M,dim)
+    return sigma_sq, hyp, pseudo_inputs
+
+def pack_params(sigma_sq, hyp, pseudo_inputs,M,dim):
+    X = np.zeros(get_packed_param_len(dim,M))
+    X[0] = sigma_sq
+    X[1], X[2:2+dim] = hyp
+    X[2+dim:] = pseudo_inputs.flatten()
+    return X
+
+def get_packed_param_len(dim, M):
+    return 1 + 1 + dim + (M * dim)
