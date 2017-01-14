@@ -1,4 +1,4 @@
-# Created by Mårten Nilsson 2017-01-09 to illustrate a toy example of the SPGP implementation.
+# Created by Mårten Nilsson to provide MSE prediction results on the full data sets with random pseudo input points 
 import numpy as np
 import matplotlib.pyplot as plt
 from data_loader import hallucinate_data, load_data, load_test_data
@@ -48,4 +48,10 @@ for i, M in enumerate(Ms):
 
 print(Ms)
 print(vals)
+
+plt.plot(Ms, vals, 'rs')
+plt.show()
+
+plt.semilogy(Ms, vals, 'rs')
+plt.show()
 

@@ -14,6 +14,9 @@ def load_data(name):
     T = mat["T_tr"]
     return X, T
 
+def reduce_data(X, N):
+    return X[np.random.randint(0, X.shape[0], N)] 
+
 def load_test_data(name):
     """
     Load the test data from one of the datasets.
