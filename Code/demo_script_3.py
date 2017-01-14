@@ -5,8 +5,8 @@ from data_loader import hallucinate_data, load_data, load_original_toy_data
 from SPGP_alt import SPGP_alt
 
 X, T = load_original_toy_data() 
-X_b = np.linspace(0, 2, 20)    # Set pseudo inputs
-X_b = np.reshape(X_b, [20, 1])
+X_b = np.linspace(0, 1, 9) + 0.1   # Set pseudo inputs
+X_b = np.reshape(X_b, [9, 1])
 
 print(X)
 
@@ -14,6 +14,7 @@ print(X)
 # Create the process
 process = SPGP_alt(X, T)
 process.pseudo_inputs = X_b
+process.M = 9
 process.do_precomputations()
 process.do_differential_precomputations()
 print(process.log_likelihood())
@@ -25,7 +26,7 @@ print()
 print(process.log_likelihood())
 
 # Get the predictive mean
-X2 = np.reshape(np.linspace(-8, 8, 200), (200, 1))
+X2 = np.reshape(np.linspace(-2, 8, 200), (200, 1))
 mean = process.get_predictive_mean(X2)
 var = process.get_predictive_variance(X2)
 std = np.sqrt(var)
