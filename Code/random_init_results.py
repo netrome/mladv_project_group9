@@ -1,20 +1,13 @@
 # Created by Mårten Nilsson 2017-01-09 to illustrate a toy example of the SPGP implementation.
 import numpy as np
 import matplotlib.pyplot as plt
-from data_loader import hallucinate_data, load_data, load_original_toy_data
+from data_loader import hallucinate_data, load_data
 from SPGP_alt import SPGP_alt
 
-X, T = load_original_toy_data() 
-X_b = np.linspace(0, 1, 9) + 0.8   # Set pseudo inputs
-X_b = np.reshape(X_b, [9, 1])
-
-print(X)
-
+X, T = hallucinate_data(1, 100)  #1D-data is plottable
 
 # Create the process
 process = SPGP_alt(X, T)
-process.pseudo_inputs = X_b
-process.M = 9
 process.do_precomputations()
 process.do_differential_precomputations()
 print(process.log_likelihood())
@@ -26,7 +19,7 @@ print()
 print(process.log_likelihood())
 
 # Get the predictive mean
-X2 = np.reshape(np.linspace(-2, 8, 200), (200, 1))
+X2 = np.reshape(np.linspace(-8, 8, 200), (200, 1))
 mean = process.get_predictive_mean(X2)
 var = process.get_predictive_variance(X2)
 std = np.sqrt(var)
@@ -39,3 +32,16 @@ plt.plot(X2, mean - std, 'm')
 plt.plot(process.pseudo_inputs[:, 0], np.zeros(process.M) + np.min(T), 'b+')
 plt.show()
 
+# With real data, but no plot
+X, T = load_data("kin40k")
+process = SPGP_alt(X, T)
+process.do_precomputations()
+print("Finished with kin40k")
+process.optimize_hyperparameters()
+
+"""
+X, T = load_data("pumadyn32nm")
+process = SPGP(X, T)
+process.do_precomputations()
+print("Finished with pumadyn")
+"""
