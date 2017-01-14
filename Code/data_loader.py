@@ -24,3 +24,13 @@ def hallucinate_data(dim, n):
     Y = np.reshape(Y, [Y.size, 1])
     return X, Y
 
+def load_original_toy_data():
+    """
+    Loads the original toy data, a bit hardcoded
+    """
+    X = np.genfromtxt('SPGP_dist/train_inputs')
+    T = np.genfromtxt('SPGP_dist/train_outputs')
+    
+    X = np.reshape(X, [len(X), 1])
+    T = np.reshape(T, [len(T), 1])
+    return X, T
