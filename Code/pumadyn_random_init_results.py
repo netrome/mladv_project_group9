@@ -6,17 +6,21 @@ from SPGP_alt import SPGP_alt
 
 M = 20
 
-# Kin40k data
-X, T = load_data("kin40k")
-process = SPGP_alt(X, T)
+# pumadyn32nm data
+X, T = load_data("pumadyn32nm")
 print(X.shape)
+process = SPGP_alt(X, T)
 
-# Select pseudo-inputs
-process.M = M
-process.update_random_pseudo_inputs(X)
+# Select hyperparameters
+process.sigma_sq = 1
+c = 1.49
+b = np.array([0.0009, 0.0003, 0.0006, 0.0021, 0.8001, 0.0007, 0.0007, 0.0004, 0.0006, 0.0009, 0.0005, 0.0004, 0.0006, 0.0005, 0.0374, 0.3159, 0.0007,
+              0.0007, 0.0004, 0.0008, 0.0007, 0.0010, 0.0004, 0.0004, 0.0005, 0.0005, 0.0008, 0.0003, 0.0004, 0.0005, 0.0005, 0.0007])
+process.hyp = [c, b]
+process.set_kernel()
 
 # Get test data
-X_tst, T_tst = load_test_data("kin40k")
+X_tst, T_tst = load_test_data("pumadyn32nm")
 print(X_tst.shape)
 
 process.do_precomputations()
@@ -36,7 +40,7 @@ print("Finished")
 
 # Do a loop and save values
 
-Ms = np.array([20, 40, 60, 80, 100, 200, 300, 400, 500, 750, 1000, 1250])
+Ms = np.array([20, 40, 60, 80, 100, 200, 300, 400, 500, 750])
 vals = np.zeros(len(Ms))
 
 for i, M in enumerate(Ms):

@@ -174,8 +174,8 @@ class SPGP_alt:
             dss, dhyp, dxb = self.derivate_log_likelihood()
 
             # Ugly hack
-            dss = np.sign(dss) * 10 * (np.exp((iters-i)/2/iters))
-            dx_val = 10 * (np.exp((iters-i)/2/iters))
+            dss = np.sign(dss) * 10 * (np.exp((iters-i)/2/iters)) 
+            dx_val = 10 * (np.exp((iters-i)/2/iters)) 
             
             # Update sigma_square
             print("sigma_sq, ", self.sigma_sq)
@@ -183,9 +183,9 @@ class SPGP_alt:
             self.sigma_sq = np.abs(self.sigma_sq)
             
             # Update hyp
-            self.hyp[0] -= l * np.sign(dhyp[0]) * dx_val * 0.1
+            self.hyp[0] -= l * np.sign(dhyp[0]) * dx_val * 0.5
 #            self.hyp[1] += l*np.sign(dhyp[1]) * 10 * (np.exp((iters-i)/2/iters))
-            self.hyp[1] -= l * np.sign(dhyp[1]) * dx_val * 0.1
+            self.hyp[1] -= l * np.sign(dhyp[1]) * dx_val * 0.5
             #self.hyp[1] = np.abs(self.hyp[1])
             
             print("dxb, ", dxb[4])

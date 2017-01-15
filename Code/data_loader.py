@@ -12,6 +12,7 @@ def load_data(name):
     mat = loadmat(data_folder + name)
     X = mat["X_tr"]
     T = mat["T_tr"]
+    
     return X, T
 
 def reduce_data(X, N):
