@@ -13,12 +13,12 @@ process = SPGP_alt(X, T)
 
 # Select hyperparameters
 #process.sigma_sq = 0.0012 ** 2
-process.sigma_sq = 1
-c = 1.49
-b = np.array([0.0009, 0.0003, 0.0006, 0.0021, 0.8001, 0.0007, 0.0007, 0.0004, 0.0006, 0.0009, 0.0005, 0.0004, 0.0006, 0.0005, 0.0374, 0.3159, 0.0007,
-              0.0007, 0.0004, 0.0008, 0.0007, 0.0010, 0.0004, 0.0004, 0.0005, 0.0005, 0.0008, 0.0003, 0.0004, 0.0005, 0.0005, 0.0007])
-process.hyp = [c, b]
-process.set_kernel()
+#process.sigma_sq = 1
+#c = 1.49
+#b = np.array([0.0009, 0.0003, 0.0006, 0.0021, 0.8001, 0.0007, 0.0007, 0.0004, 0.0006, 0.0009, 0.0005, 0.0004, 0.0006, 0.0005, 0.0374, 0.3159, 0.0007,
+#              0.0007, 0.0004, 0.0008, 0.0007, 0.0010, 0.0004, 0.0004, 0.0005, 0.0005, 0.0008, 0.0003, 0.0004, 0.0005, 0.0005, 0.0007])
+#process.hyp = [c, b]
+#process.set_kernel()
 
 # Get test data
 X_tst, T_tst = load_test_data("pumadyn32nm")
@@ -47,8 +47,7 @@ vals = np.zeros(len(Ms))
 for i, M in enumerate(Ms):
     process.M = M
     process.update_random_pseudo_inputs(X)
-    
-    process.do_precomputations()
+    process.optimize_hyperparameters()
     T_inferred = process.get_predictive_mean(X_tst)
     
     error = T_tst - T_inferred

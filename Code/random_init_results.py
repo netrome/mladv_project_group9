@@ -13,11 +13,11 @@ print(X.shape)
 
 # Select pseudo-inputs
 #process.sigma_sq = 0.0047 ** 2
-process.sigma_sq = 1
-c = 0.4828
-b = np.array([0.0111, 0.0085, 0.3714, 0.2144, 0.2346, 0.5437, 0.5547, 0.2769])
-process.hyp = [c, b]
-process.set_kernel()
+#process.sigma_sq = 1
+#c = 0.4828
+#b = np.array([0.0111, 0.0085, 0.3714, 0.2144, 0.2346, 0.5437, 0.5547, 0.2769])
+#process.hyp = [c, b]
+#process.set_kernel()
 
 # Get test data
 X_tst, T_tst = load_test_data("kin40k")
@@ -40,22 +40,23 @@ print("Finished")
 
 # Do a loop and save values
 
-Ms = np.array([20, 40, 60, 80, 100, 200, 300, 400, 500, 750, 1000, 1250])
+Ms = np.array([20, 40, 60])# 80, 100, 200, 300, 400, 500, 750, 1000, 1250])
 vals = np.zeros(len(Ms))
 
 for i, M in enumerate(Ms):
     process.M = M
     process.update_random_pseudo_inputs(X)
-    
+    print("begore optimization")
+    process.optimize_hyperparameters()
     process.do_precomputations()
     T_inferred = process.get_predictive_mean(X_tst)
     
     error = T_tst - T_inferred
     val = np.mean(error ** 2)
     vals[i] = val
-    
     print("Finished with M = ", M)
-
+    print("Val =",val)
+    
 print(Ms)
 print(vals)
 

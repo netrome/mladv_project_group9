@@ -23,8 +23,7 @@ def get_kernel_function(hyp):
         x2 is assumed to be of shape [dim x j].
         b is assumed to be of shape [dim].
         This function returns the matrix K so that K[i, j] = K(xi, xj).
-        This can possibly be optimized by the use of matrix algebra instead of for loops.
-        """        
+        """
         v = b ** -1
         dists = cdist(x1,x2,metric='seuclidean',V=v)
         K = (c * np.exp(- 1/2 * (dists ** 2)))
@@ -58,22 +57,26 @@ class SPGP_alt:
         Sets arbitrary hyperparameters, noise and pseudo inputs so that the model works.
         Requires the data to have more than 20 data points
         """
-        self.N, self.dim = X_tr.shape
+        
+        self.true_N, self.dim = X_tr.shape
+        self.N = 20
         self.M = 20
-        #self.hyp = (np.random.rand(), np.random.rand(self.dim))    
+        #self.hyp = (np.random.rand(), np.random.rand(self.dim))
         self.hyp = [1.2, np.zeros(self.dim) + 1.001]
         self.sigma_sq = 5
         self.kernel, self.diag_kernel = get_kernel_function(self.hyp)
-        self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.M)] 
+        self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.M)]
         #self.pseudo_inputs = np.linspace(np.min(X_tr),np.max(X_tr),self.M)[:,np.newaxis]
-        self.X_tr = X_tr
-        self.Y_tr = Y_tr
+        self.X_tr_true = X_tr
+        self.Y_tr_true = Y_tr
+        self.X_tr = X_tr[:self.N]
+        self.Y_tr = Y_tr[:self.N]
 
     def update_random_pseudo_inputs(self, X_tr):
         """
         Updates the pseudo input points
         """
-        self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.M)] 
+        self.pseudo_inputs = X_tr[np.random.randint(0, X_tr.shape[0], self.M)]
 
 
     def set_kernel(self, hyp=None):
@@ -97,15 +100,15 @@ class SPGP_alt:
         K_N = self.diag_kernel(self.X_tr, self.X_tr) # Note, only copute the diagonal!
 
         Q_N = K_NM @ (K_M_inv @ ( K_MN ) )
-        Lambda_sigma = np.diag(np.diag(K_N - Q_N) + self.sigma_sq) 
+        Lambda_sigma = np.diag(np.diag(K_N - Q_N) + self.sigma_sq)
         Gamma = Lambda_sigma / (self.sigma_sq)
         LS_inv = np.diag(np.diag(Lambda_sigma) ** (-1))
-        B = K_M + K_MN @ ( LS_inv ) @ (K_NM)
+        B = K_M + K_MN @ LS_inv @ (K_NM)
 
         # Save stuff to be used in predictions
         self.B_inv = np.linalg.inv(B)
         self.A = (self.sigma_sq) * B
-        self.A_sqrt = cholesky(self.A + np.eye(self.A.shape[0])*0.000001) 
+        self.A_sqrt = cholesky(self.A + np.eye(self.A.shape[0])*0.000001)
         self.alpha = self.B_inv @ ( K_MN @ ( LS_inv @ ( self.Y_tr ) ) )
         self.K_M_inv = K_M_inv
         self.K_M = K_M
@@ -142,7 +145,7 @@ class SPGP_alt:
         """
         self.K_N = self.diag_kernel(self.X_tr, self.X_tr) # Note, only copute the diagonal!
         self.K_M = self.kernel(self.pseudo_inputs, self.pseudo_inputs) + 1e-6*np.eye(self.M)
-        self.K_M_sqrt = cholesky(self.K_M)
+        self.K_M_sqrt = cholesky(self.K_M + np.random.rand(self.M,self.M) * 1e-6)
         self.K_M_sqrt_inv = inv(self.K_M_sqrt)
         self.K_M_inv = inv(self.K_M)
         self.K_MN = self.kernel(self.pseudo_inputs, self.X_tr)
@@ -163,21 +166,38 @@ class SPGP_alt:
         self.A_sqrt = cholesky(self.A)
         self.A_sqrt_inv = inv(self.A_sqrt)
 
+    def get_batches(self,n_iters):
+        no_batches = self.true_N // self.N
+        print(n_iters)
+        print(no_batches)
+        for _ in range(n_iters // no_batches):
+            print("tjoho")        
+
+            idxs = np.random.permutation(self.true_N - 1)
+            for i in range(no_batches):
+                yield self.X_tr_true[idxs[i:i+self.N]], self.Y_tr_true[idxs[i:i+self.N]]
+
     def optimize_hyperparameters(self):
-        
-        l = 0.01
-        iters = 60
-        for i in range(iters):
-            self.do_differential_precomputations()      #PRECOMPUTATIONS - IMPORTAAAAANT
+        l = 0.001
+        iters = 500
+        print("Hello 1")
+        for i, (X_tr, Y_tr) in enumerate(self.get_batches(iters)):
+            print("iteration ",i)
             
+            self.X_tr, self.Y_tr = X_tr, Y_tr
+            #PRECOMPUTATIONS - IMPORTAAAAANT
+            self.set_kernel()
+            self.do_precomputations()
+            self.do_differential_precomputations()
+
             dss, dhyp, dxb = self.derivate_log_likelihood()
 
             # Ugly hack
-            dss = np.sign(dss) * 10 * (np.exp((iters-i)/2/iters)) 
-            dx_val = 10 * (np.exp((iters-i)/2/iters)) 
+            dss = np.sign(dss) * 10 * (np.exp((iters-i)/2/iters))
+            dx_val = 10 * (np.exp((iters-i)/2/iters))
             
             # Update sigma_square
-            print("sigma_sq, ", self.sigma_sq)
+            #print("sigma_sq, ", self.sigma_sq)
             self.sigma_sq -= l*dss
             self.sigma_sq = np.abs(self.sigma_sq)
             
@@ -187,18 +207,17 @@ class SPGP_alt:
             self.hyp[1] -= l * np.sign(dhyp[1]) * dx_val * 0.5
             #self.hyp[1] = np.abs(self.hyp[1])
             
-            print("dxb, ", dxb[4])
-            print("xb, ", self.pseudo_inputs[4])
+            #print("dxb, ", dxb[4])
+            #print("xb, ", self.pseudo_inputs[4])
                         
             self.pseudo_inputs -= l * np.sign(dxb) * dx_val
             
             # Hack the b:s
             #self.hyp[1][self.hyp[1] < 0] = 0
-            print("db", dhyp[1])
-            print("b: ", self.hyp[1])
-            print("c: ", self.hyp[0])
-            self.set_kernel()
-            
+            #print("db", dhyp[1])
+            #print("b: ", self.hyp[1])
+            #print("c: ", self.hyp[0])
+        self.set_kernel()
         return
 
     def derivate_log_likelihood(self):
@@ -229,7 +248,7 @@ class SPGP_alt:
         dK_MN_ = dK_MN @ self.Gamma_sqrt_inv
         
         dGamma = (1 / self.sigma_sq) * np.diag(np.diag( dK_N - 2*dK_NM @ (self.K_M_inv) @ (self.K_MN) +
-                            self.K_NM @ (self.K_M_inv) @ (dK_M) @ (self.K_M_inv) @ (self.K_MN) ))
+                            self.K_NM @ self.K_M_inv @ dK_M @ self.K_M_inv @ self.K_MN ))
         dA = self.sigma_sq * dK_M + 2 * (dK_NM.transpose() @ (self.Gamma_inv) @ (self.K_NM)) - (
              self.K_MN @ ( self.Gamma_inv ) @ ( dGamma ) @ ( self.Gamma_inv ) @ ( self.K_NM ))
          
