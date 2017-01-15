@@ -6,7 +6,7 @@ import numpy as np
 from numpy.linalg import det, inv, norm, cholesky
 from scipy.optimize import check_grad, approx_fprime
 from scipy.optimize import fmin_tnc, fmin_cg
-
+from scipy.spatial.distance import cdist
 
 np.seterr(all = "raise")
 
@@ -24,11 +24,10 @@ def get_kernel_function(hyp):
         b is assumed to be of shape [dim].
         This function returns the matrix K so that K[i, j] = K(xi, xj).
         This can possibly be optimized by the use of matrix algebra instead of for loops.
-        """
-        K = np.zeros([x1.shape[0], x2.shape[0]])
-        for i in range(x1.shape[0]):
-            for j in range(x2.shape[0]):
-                K[i, j] = c * np.exp( (-1/2) * ( b.dot( ( (x1[i] - x2[j])**2 ) ) ) )
+        """        
+        v = b ** -1
+        dists = cdist(x1,x2,metric='seuclidean',V=v)
+        K = (c * np.exp(- 1/2 * (dists ** 2)))
         return K
 
     def diag_kernel(x1, x2):
@@ -44,7 +43,7 @@ def get_kernel_function(hyp):
 
         K = np.zeros([x1.shape[0], x2.shape[0]])
         for i in range(x1.shape[0]):
-                K[i, i] = c * np.exp( (-1/2) * ( b.dot( ( (x1[i] - x2[i])**2 ) ) ) )
+                K[i, i] = c * np.exp( (-1/2) * ( b @ ( ( (x1[i] - x2[i])**2 ) ) ) )
         return K
 
     return kernel, diag_kernel
@@ -97,17 +96,17 @@ class SPGP_alt:
         K_NM = np.transpose(K_MN)
         K_N = self.diag_kernel(self.X_tr, self.X_tr) # Note, only copute the diagonal!
 
-        Q_N = K_NM.dot(K_M_inv.dot( K_MN ) )
+        Q_N = K_NM @ (K_M_inv @ ( K_MN ) )
         Lambda_sigma = np.diag(np.diag(K_N - Q_N) + self.sigma_sq) 
         Gamma = Lambda_sigma / (self.sigma_sq)
         LS_inv = np.diag(np.diag(Lambda_sigma) ** (-1))
-        B = K_M + K_MN.dot( LS_inv ).dot(K_NM)
+        B = K_M + K_MN @ ( LS_inv ) @ (K_NM)
 
         # Save stuff to be used in predictions
         self.B_inv = np.linalg.inv(B)
         self.A = (self.sigma_sq) * B
         self.A_sqrt = cholesky(self.A + np.eye(self.A.shape[0])*0.000001) 
-        self.alpha = self.B_inv.dot( K_MN.dot( LS_inv.dot( self.Y_tr ) ) )
+        self.alpha = self.B_inv @ ( K_MN @ ( LS_inv @ ( self.Y_tr ) ) )
         self.K_M_inv = K_M_inv
         self.K_M = K_M
         self.K_N = K_N
@@ -121,7 +120,7 @@ class SPGP_alt:
         Returns the predictive mean for the inputs. Relies on the precomputed alpha values.
         """
         K = self.kernel(x_input, self.pseudo_inputs)
-        return K.dot(self.alpha)
+        return K @ (self.alpha)
 
     def get_predictive_variance(self, x_input):
         """
@@ -134,7 +133,7 @@ class SPGP_alt:
             K_starM = self.kernel(x, self.pseudo_inputs)
             K_Mstar = np.transpose(K_starM)
 
-            var[i] = K_star - K_starM.dot(self.K_M_inv - self.B_inv).dot(K_Mstar) + self.sigma_sq
+            var[i] = K_star - K_starM @ (self.K_M_inv - self.B_inv) @ (K_Mstar) + self.sigma_sq
         return var
 
     def do_differential_precomputations(self):
@@ -148,18 +147,18 @@ class SPGP_alt:
         self.K_M_inv = inv(self.K_M)
         self.K_MN = self.kernel(self.pseudo_inputs, self.X_tr)
         self.K_NM = np.transpose(self.K_MN)
-        self.Q_N = self.K_NM.dot(self.K_M_inv).dot(self.K_MN)
+        self.Q_N = self.K_NM @ (self.K_M_inv) @ (self.K_MN)
 
         self.Gamma = np.diag(np.diag(self.K_N - self.Q_N)/self.sigma_sq + 1) 
         self.Gamma_inv = np.diag(np.diag(self.Gamma) ** (-1))    # It's diagonal
         self.Gamma_sqrt = self.Gamma ** (1/2)   
         self.Gamma_sqrt_inv = np.diag(np.diag(self.Gamma) ** (-1/2))
         
-        self.y_ = self.Gamma_sqrt_inv.dot(self.Y_tr)
-        self.K_NM_ = self.Gamma_sqrt_inv.dot(self.K_NM)
+        self.y_ = self.Gamma_sqrt_inv @ (self.Y_tr)
+        self.K_NM_ = self.Gamma_sqrt_inv @ (self.K_NM)
         self.K_MN_ = self.K_NM_.transpose()
 
-        self.A = self.sigma_sq * self.K_M + self.K_MN.dot( self.Gamma_inv ).dot( self.K_NM ) 
+        self.A = self.sigma_sq * self.K_M + self.K_MN @ ( self.Gamma_inv ) @ ( self.K_NM ) 
         self.A_inv = inv(self.A)
         self.A_sqrt = cholesky(self.A)
         self.A_sqrt_inv = inv(self.A_sqrt)
@@ -229,8 +228,8 @@ class SPGP_alt:
         dK_MN = dK_NM.T
         dK_MN_ = dK_MN @ self.Gamma_sqrt_inv
         
-        dGamma = (1 / self.sigma_sq) * np.diag(np.diag( dK_N - 2*dK_NM.dot(self.K_M_inv).dot(self.K_MN) +
-                            self.K_NM.dot(self.K_M_inv).dot(dK_M).dot(self.K_M_inv).dot(self.K_MN) ))
+        dGamma = (1 / self.sigma_sq) * np.diag(np.diag( dK_N - 2*dK_NM @ (self.K_M_inv) @ (self.K_MN) +
+                            self.K_NM @ (self.K_M_inv) @ (dK_M) @ (self.K_M_inv) @ (self.K_MN) ))
         dA = self.sigma_sq * dK_M + 2 * (dK_NM.transpose() @ (self.Gamma_inv) @ (self.K_NM)) - (
              self.K_MN @ ( self.Gamma_inv ) @ ( dGamma ) @ ( self.Gamma_inv ) @ ( self.K_NM ))
          
@@ -332,16 +331,16 @@ class SPGP_alt:
         Gamma_sqrt = self.Gamma_sqrt
         sigma_sq = self.sigma_sq
         A_inv = self.A_inv
-        K_MN = self.K_MN.dot( self.Gamma_sqrt_inv ) # Implicit underscore
+        K_MN = self.K_MN @ ( self.Gamma_sqrt_inv ) # Implicit underscore
         K_NM = np.transpose(K_MN)
-        y = self.Gamma_sqrt_inv.dot(self.Y_tr)  
+        y = self.Gamma_sqrt_inv @ (self.Y_tr)  
 
-        dL1 = (1 / sigma_sq) * (np.trace(self.Gamma_inv) - np.trace(K_NM.dot( 
-                                                        A_inv ).dot( K_MN )))
+        dL1 = (1 / sigma_sq) * (np.trace(self.Gamma_inv) - np.trace(K_NM @ ( 
+                                                        A_inv ) @ ( K_MN )))
         dL1 /= 2
 
-        dL2 = norm(y) ** 2 + norm(K_NM.dot( A_inv ).dot( K_MN ).dot( y )) ** 2 
-        dL2 -= 2 * y.transpose().dot( K_NM ).dot( A_inv ).dot( K_MN ).dot( y )
+        dL2 = norm(y) ** 2 + norm(K_NM @ ( A_inv ) @ ( K_MN ) @ ( y )) ** 2 
+        dL2 -= 2 * y.transpose() @ ( K_NM ) @ ( A_inv ) @ ( K_MN ) @ ( y )
         dL2 *= -(1 /( sigma_sq ** 2) )
         dL2 /= 2
         return (dL1 + dL2)[0, 0]
@@ -364,7 +363,7 @@ class SPGP_alt:
 
         L1 = np.log(det(A)) - np.log(det(K_M)) + np.log(det(Gamma)) + (N - M) * np.log(sigma_sq)
         L1 /= 2
-        L2 = (1/sigma_sq) * (norm(y_under) ** 2 - norm(inv(A_sqrt).dot(K_MN_under).dot(y_under)) ** 2)
+        L2 = (1/sigma_sq) * (norm(y_under) ** 2 - norm(inv(A_sqrt) @ (K_MN_under) @ (y_under)) ** 2)
         L2 /= 2
         return L1 + L2 #+(N/2 * np.log(2 * np.pi))
 
